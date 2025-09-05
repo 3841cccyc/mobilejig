@@ -1,0 +1,105 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\DesktopGameApplication\\src\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\DesktopGameApplication\\src\\components\\Leaderboard.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:components\\Leaderboard.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\DesktopGameApplication\\src\\components\\PuzzleEditor.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:components\\PuzzleEditor.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\DesktopGameApplication\\src\\components\\PuzzlePiece.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:components\\PuzzlePiece.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\DesktopGameApplication\\src\\components\\LeaderBoardService.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:components\\LeaderBoardService.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\DesktopGameApplication\\src\\components\\GamePage.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:components\\GamePage.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "LeaderBoardService.tsx",
+              "DocumentMoniker": "D:\\DesktopGameApplication\\src\\components\\LeaderBoardService.tsx",
+              "RelativeDocumentMoniker": "components\\LeaderBoardService.tsx",
+              "ToolTip": "D:\\DesktopGameApplication\\src\\components\\LeaderBoardService.tsx",
+              "RelativeToolTip": "components\\LeaderBoardService.tsx",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAApAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2025-09-05T03:51:23.73Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Leaderboard.tsx",
+              "DocumentMoniker": "D:\\DesktopGameApplication\\src\\components\\Leaderboard.tsx",
+              "RelativeDocumentMoniker": "components\\Leaderboard.tsx",
+              "ToolTip": "D:\\DesktopGameApplication\\src\\components\\Leaderboard.tsx",
+              "RelativeToolTip": "components\\Leaderboard.tsx",
+              "ViewState": "AgIAAI0AAAAAAAAAAAAiwKsAAAAeAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2025-09-05T03:40:11.569Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "GamePage.tsx",
+              "DocumentMoniker": "D:\\DesktopGameApplication\\src\\components\\GamePage.tsx",
+              "RelativeDocumentMoniker": "components\\GamePage.tsx",
+              "ToolTip": "D:\\DesktopGameApplication\\src\\components\\GamePage.tsx",
+              "RelativeToolTip": "components\\GamePage.tsx",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAHAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2025-09-05T03:26:49.398Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "PuzzleEditor.tsx",
+              "DocumentMoniker": "D:\\DesktopGameApplication\\src\\components\\PuzzleEditor.tsx",
+              "RelativeDocumentMoniker": "components\\PuzzleEditor.tsx",
+              "ToolTip": "D:\\DesktopGameApplication\\src\\components\\PuzzleEditor.tsx",
+              "RelativeToolTip": "components\\PuzzleEditor.tsx",
+              "ViewState": "AgIAAAUBAAAAAAAAAAAewI8AAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2025-09-05T03:13:52.722Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "PuzzlePiece.tsx",
+              "DocumentMoniker": "D:\\DesktopGameApplication\\src\\components\\PuzzlePiece.tsx",
+              "RelativeDocumentMoniker": "components\\PuzzlePiece.tsx",
+              "ToolTip": "D:\\DesktopGameApplication\\src\\components\\PuzzlePiece.tsx",
+              "RelativeToolTip": "components\\PuzzlePiece.tsx",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2025-09-05T03:13:49.875Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

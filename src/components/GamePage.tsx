@@ -128,36 +128,6 @@ export function GamePage({ onNavigate, difficulty }: GamePageProps) {
     );
   }
 
-    if (gameState === 'completed') {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center space-y-4">
-                    <h1 className="text-4xl">🎉 恭喜通关！</h1>
-                    <p className="text-muted-foreground">
-                        你完成了拼图！
-                    </p>
-                    <div className="flex gap-2 justify-center">
-                        <Button onClick={() => window.location.reload()}>
-                            再玩一次
-                        </Button>
-                        <Button onClick={() => onNavigate('difficulty')} variant="outline">
-                            更改难度
-                        </Button>
-                        <Button onClick={() => onNavigate('home')} variant="ghost">
-                            返回主页
-                        </Button>
-                    </div>
-                    <div className="mt-4 text-sm text-muted-foreground">
-                        <div>步数：{moves}</div>
-                        {settings.timeLimit && (
-                            <div>用时：{formatTime(settings.timeLimit - (timeLeft ?? 0))}</div>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
   return (
     <div className="min-h-screen flex flex-col">
       {/* Timer and Top Controls */}

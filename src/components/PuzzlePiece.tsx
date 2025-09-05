@@ -65,7 +65,8 @@ function generatePiecePath(edges: PuzzlePieceProps['edges'], size: number = 120)
   const center = size / 2;
   const tabRadius = size * 0.15; // Radius for perfect semicircles
   const edgeOffset = 4; // Small offset from edge for smoother connection
-  
+  const extendoffset = tabRadius;
+
   let path = '';
   
   // Start at top-left corner
@@ -189,9 +190,10 @@ export function PuzzlePiece({
   };
   
   // Calculate piece size based on grid size
-  const basePieceSize = 120;
+  const basePieceSize = 160;
   const scaleFactor = Math.max(0.6, 1 - (gridSize - 3) * 0.15);
   const pieceSize = Math.floor(basePieceSize * scaleFactor);
+
   
   // Generate piece path with original edges (no rotation applied to path)
   const piecePath = generatePiecePath(edges, pieceSize);
@@ -199,15 +201,26 @@ export function PuzzlePiece({
   // Calculate rotation in degrees, normalized to 0-360
   const normalizedRotation = ((rotation % 360) + 360) % 360;
   
+  // Calculate tab extensions
+  const tabRadius = pieceSize * 0.15;
+  const viewBoxOffset = tabRadius;
+  const extendedViewBoxSize = pieceSize + (tabRadius * 2);
+  const sizeIncrease = extendedViewBoxSize - pieceSize; // 尺寸增加量
+  const offsetAdjustment = sizeIncrease / 2; // 需要向上左移动的距离
+
   return (
     <motion.div
       ref={dragRef}
       className={`relative cursor-pointer select-none group ${className} ${
-        isSelected ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''
-      } ${isDragging ? 'opacity-70' : ''}`}
+        isSelected ? '' : ''
+      }`} // 完全移除透明度部分
       style={{
-        width: pieceSize,
-        height: pieceSize,
+        width: extendedViewBoxSize,
+        height: extendedViewBoxSize,
+        // 补偿容器尺寸增加导致的位置偏移
+        marginLeft: isPlaced ? `${-tabRadius - offsetAdjustment}px` : '0',
+        marginTop: isPlaced ? `${-tabRadius - offsetAdjustment}px` : '0',
+        overflow: 'visible',
         filter: isDragging ? 'drop-shadow(0 8px 16px rgba(0,0,0,0.3))' : 
                 isHovered ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))' : 
                 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
@@ -232,12 +245,13 @@ export function PuzzlePiece({
       <svg
         width={pieceSize}
         height={pieceSize}
-        viewBox={`0 0 ${pieceSize} ${pieceSize}`}
+        viewBox={`${-viewBoxOffset} ${-viewBoxOffset} ${extendedViewBoxSize} ${extendedViewBoxSize}`}
         className="absolute inset-0 pointer-events-none"
         style={{ 
           // Apply rotation to the entire SVG
           transform: `rotate(${normalizedRotation}deg)`,
-          transformOrigin: 'center center'
+          transformOrigin: 'center center',
+          overflow: 'visible'
         }}
       >
         <defs>
@@ -248,15 +262,16 @@ export function PuzzlePiece({
             <pattern
               id={`pattern-${id}`}
               patternUnits="userSpaceOnUse"
-              width={pieceSize}
-              height={pieceSize}
-              // Counter-rotate the pattern to keep image upright
-              patternTransform={`rotate(${-normalizedRotation} ${pieceSize/2} ${pieceSize/2})`}
+              width={extendedViewBoxSize}
+              height={extendedViewBoxSize}
+              x={-viewBoxOffset}
+              y={-viewBoxOffset}
             >
+              
               <image
                 href={imageUrl}
-                x={-(position.col * pieceSize)}
-                y={-(position.row * pieceSize)}
+                x={-(position.col * pieceSize) + viewBoxOffset}
+                y={-(position.row * pieceSize) + viewBoxOffset}
                 width={gridSize * pieceSize}
                 height={gridSize * pieceSize}
                 preserveAspectRatio="xMidYMid slice"
@@ -282,9 +297,10 @@ export function PuzzlePiece({
         <path
           d={piecePath}
           fill={imageUrl ? `url(#pattern-${id})` : `hsl(var(--primary) / 0.8)`}
+          fillOpacity="1" // 添加这行
           stroke={isSelected ? "hsl(var(--primary))" : "hsl(var(--border))"}
           strokeWidth={isSelected ? "2.5" : "1.5"}
-          clipPath={`url(#clip-${id})`}
+          shapeRendering="crispEdges" // 添加这行
           filter={
             isSelected 
               ? `url(#glow-${id})` 
@@ -329,7 +345,15 @@ export function PuzzlePiece({
 
       {/* Selection highlight */}
       {isSelected && (
-        <div className="absolute inset-0 bg-primary/5 rounded-sm pointer-events-none" />
+        <div 
+          className="absolute bg-primary/5 rounded-sm pointer-events-none" 
+          style={{
+            left: `${tabRadius}px`,     // 从左边偏移tabRadius
+            top: `${tabRadius}px`,      // 从顶部偏移tabRadius  
+            width: `${pieceSize}px`,    // 原始拼图块尺寸
+            height: `${pieceSize}px`    // 原始拼图块尺寸
+          }}
+        />
       )}
     </motion.div>
   );

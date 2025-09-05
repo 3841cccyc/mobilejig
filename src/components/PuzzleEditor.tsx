@@ -110,7 +110,7 @@ export function PuzzleEditor({
   const basePieceSize = 120;
   const scaleFactor = Math.max(0.6, 1 - (gridSize - 3) * 0.15);
   const pieceSize = Math.floor(basePieceSize * scaleFactor);
-  const gridCellSize = pieceSize + 8;
+  const gridCellSize = pieceSize;
   const puzzleAreaSize = gridSize * gridCellSize;
 
   // Handle piece click (selection)
@@ -424,13 +424,13 @@ export function PuzzleEditor({
           <Card className="bg-card/95 backdrop-blur-sm shadow-xl">
             <CardContent className="p-6">
               <div 
-                className={`grid gap-1 ${
+                className={`grid gap-0 ${
                   gridSize === 3 ? 'grid-cols-3' :
                   gridSize === 4 ? 'grid-cols-4' : 'grid-cols-5'
                 }`}
                 style={{ 
-                  width: `${puzzleAreaSize + 16}px`,
-                  height: `${puzzleAreaSize + 16}px`
+                  width: `${puzzleAreaSize}px`,
+                  height: `${puzzleAreaSize}px`
                 }}
               >
                 {Array.from({ length: gridSize * gridSize }).map((_, index) => {
@@ -442,16 +442,16 @@ export function PuzzleEditor({
                   return (
                     <div
                       key={index}
-                      className={`border-2 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150 relative ${
-                        isSelected
-                          ? 'border-primary bg-primary/10'
-                          : editorMode === 'design' 
-                          ? 'border-solid border-muted-foreground/30 hover:border-muted-foreground/60'
-                          : 'border-dashed border-muted-foreground/30 hover:border-muted-foreground/60'
+                      className={`
+                        relative border-2 transition-all duration-150 
+                        flex items-center justify-center  // 添加这行
+                        ${piece ? 'border-primary bg-background' 
+                                : 'border-dashed border-muted-foreground/30 hover:border-muted-foreground/60'}
                       }`}
                       style={{
                         width: `${gridCellSize}px`,
-                        height: `${gridCellSize}px`
+                        height: `${gridCellSize}px`,
+                        overflow: 'visible'
                       }}
                       onClick={() => handleGridCellClick(row, col)}
                       onDrop={(e) => handleGridCellDrop(e, row, col)}
@@ -612,7 +612,7 @@ export function PuzzleEditor({
             </CardHeader>
             <CardContent className="h-full flex flex-col">
               <div 
-                className="grid gap-[3%] overflow-y-auto flex-1"
+                className="grid gap-0 overflow-y-auto flex-1"
                 style={{ 
                   gridTemplateColumns: `repeat(${Math.min(5, Math.ceil(Math.sqrt(unplacedPieces.length)))}, 1fr)`,
                   gridAutoRows: 'min-content'

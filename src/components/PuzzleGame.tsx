@@ -111,7 +111,7 @@ export function PuzzleGame({
   const basePieceSize = 120;
   const scaleFactor = Math.max(0.6, 1 - (gridSize - 3) * 0.15);
   const pieceSize = Math.floor(basePieceSize * scaleFactor);
-  const gridCellSize = pieceSize + 8; // Add padding for grid cells
+  const gridCellSize = pieceSize; // Add padding for grid cells
   const puzzleAreaSize = gridSize * gridCellSize;
 
   // Check if two pieces can connect
@@ -466,13 +466,13 @@ export function PuzzleGame({
           {/* Puzzle Grid */}
           <div className="bg-card/95 backdrop-blur-sm rounded-lg p-6 shadow-xl">
             <div 
-              className={`grid gap-1 ${
+              className={`grid gap-0 ${
                 gridSize === 3 ? 'grid-cols-3' :
                 gridSize === 4 ? 'grid-cols-4' : 'grid-cols-5'
               }`}
               style={{ 
-                width: `${puzzleAreaSize + 16}px`,
-                height: `${puzzleAreaSize + 16}px`
+                width: `${puzzleAreaSize}px`,
+                height: `${puzzleAreaSize}px`
               }}
             >
               {Array.from({ length: gridSize * gridSize }).map((_, index) => {
@@ -485,7 +485,7 @@ export function PuzzleGame({
                 return (
                   <div
                     key={index}
-                    className={`border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150 relative ${
+                    className={`border-0 border-dashed flex items-center justify-center cursor-pointer transition-all duration-150 relative ${
                       isSelected
                         ? 'border-primary bg-primary/10'
                         : piece && isCorrectPlacement 
@@ -516,7 +516,7 @@ export function PuzzleGame({
                         onPieceDragEnd={handlePieceDragEnd}
                         edges={piece.originalEdges}
                         isSelected={selectedPiece === piece.id}
-                        className="absolute"
+                        className=""
                       />
                     )}
                     
@@ -598,7 +598,7 @@ export function PuzzleGame({
           <CardContent className="p-4 h-full flex flex-col">
             <h3 className="font-medium mb-4 flex-shrink-0">拼图块存储 (剩余 {unplacedPieces.length} 块)</h3>
             <div 
-              className="grid gap-[3%] overflow-y-auto flex-1"
+              className="grid gap-0 overflow-y-auto flex-1"
               style={{ 
                 gridTemplateColumns: `repeat(${Math.min(5, Math.ceil(Math.sqrt(unplacedPieces.length)))}, 1fr)`,
                 gridAutoRows: 'min-content'
@@ -610,7 +610,8 @@ export function PuzzleGame({
                   className="relative flex items-center justify-center"
                   style={{ 
                     aspectRatio: '1',
-                    minHeight: `${Math.max(60, pieceSize * 0.8)}px`
+                    minHeight: `${Math.max(60, pieceSize * 0.8)}px`,
+                    overflow: 'visible'
                   }}
                 >
                   <PuzzlePiece

@@ -84,6 +84,67 @@ export const resetLeaderboard = () => {
     saveLeaderboardData(resetData);
 };
 
+// 提交分数：更新或插入排行榜
+export const submitScore = (
+    name: string,
+    score: number,
+    difficulty: 'easy' | 'medium' | 'hard',
+    level: number
+): boolean => {
+    const currentData = getLeaderboardData();
+
+    // 查找是否已有该玩家
+    const playerIndex = currentData.findIndex(p => p.name === name);
+
+    let updatedData = [...currentData];
+
+    if (playerIndex > -1) {
+        // 玩家已存在：更新分数（只保留更高分）
+        if (score > updatedData[playerIndex].score) {
+            updatedData[playerIndex] = { ...updatedData[playerIndex], score, difficulty, level };
+        }
+    } else {
+        // 玩家不存在：尝试插入
+        // 检查是否能进前10（比较最低分）
+        const minScoreInList = updatedData[updatedData.length - 1]?.score || 0;
+        if (score > minScoreInList || updatedData.length < 10) {
+            // 插入新玩家
+            const newEntry: LeaderboardEntry = {
+                rank: 0, // 临时
+                name,
+                score,
+                difficulty,
+                level,
+                icon: 'Star' // 默认图标
+            };
+            updatedData.push(newEntry);
+        } else {
+            // 分数太低，未进榜
+            return false;
+        }
+    }
+
+    // 按分数降序排序
+    updatedData.sort((a, b) => b.score - a.score);
+
+    // 重新分配排名（1 到 10）
+    updatedData = updatedData.slice(0, 10).map((item, index) => ({
+        ...item,
+        rank: index + 1
+    }));
+
+    // 补全图标（防止缺失）
+    updatedData = addIconsToData(updatedData);
+
+    // 保存
+    saveLeaderboardData(updatedData);
+
+    // 可选：更新当前组件状态（如果需要）
+    // 这里我们不直接更新，而是由调用者处理
+
+    return true; // 成功进入排行榜
+};
+
 // 工具函数：给默认数据加上图标
 function getDefaultDataWithIcons(): LeaderboardEntry[] {
     return DEFAULT_DATA.map((item, index) => ({
@@ -246,26 +307,30 @@ export function Leaderboard({ onNavigate }: { onNavigate: (page: Page) => void }
                     </Button>
 
                     {/* 测试：提交分数按钮 */}
+                    {/* 测试：提交分数 */}
                     <Button
                         variant="default"
                         className="bg-green-600 hover:bg-green-700 text-white"
                         onClick={() => {
-                            // 获取当前数据
-                            const currentData = [...leaderboardData];
-                            // 给第1名加分
-                            currentData[0] = {
-                                ...currentData[0],
-                                score: currentData[0].score + 10000
-                            };
-                            // 保存到 localStorage
-                            saveLeaderboardData(currentData);
-                            // 更新 UI
-                            setLeaderboardData(currentData);
-                            // 弹出提示
-                            alert(`已为 ${currentData[0].name} 加 10,000 分！`);
+                            const playerName = leaderboardData[0]?.name || "神秘玩家";
+                            const newScore = Math.floor(Math.random() * 80000); // 0 ~ 80,000
+                            const difficulties: ('easy' | 'medium' | 'hard')[] = ['easy', 'medium', 'hard'];
+                            const difficulty = difficulties[Math.floor(Math.random() * 3)];
+                            const level = Math.max(1, Math.floor(newScore / 5000));
+
+                            const entered = submitScore(playerName, newScore, difficulty, level);
+
+                            // 强制刷新 UI
+                            setLeaderboardData(getLeaderboardData());
+
+                            alert(
+                                entered
+                                    ? `🎉 提交成功！${playerName} 得分：${newScore.toLocaleString()}，已更新排行榜！`
+                                    : `💡 提交成功，但分数未进入前10名。`
+                            );
                         }}
                     >
-                        🎯 测试：加 10,000 分
+                        🎯 模拟提交分数
                     </Button>
                 </div>
             </div>

@@ -5,8 +5,10 @@ import { DifficultySelection } from './components/DifficultySelection';
 import { EditorDifficultySelection } from './components/EditorDifficultySelection';
 import { Editor } from './components/Editor';
 import { GamePage } from './components/GamePage';
+import { AuthForm } from './components/AuthForm';
 
-export type Page = 'home' | 'leaderboard' | 'difficulty' | 'editorDifficulty' | 'editor' | 'game';
+
+export type Page = 'home' | 'leaderboard' | 'difficulty' | 'editorDifficulty' | 'editor' | 'game' | 'login';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -34,7 +36,9 @@ export default function App() {
       case 'editor':
         return <Editor onNavigate={setCurrentPage} difficulty={editorDifficulty} />;
       case 'game':
-        return <GamePage onNavigate={setCurrentPage} difficulty={selectedDifficulty} />;
+            return <GamePage onNavigate={setCurrentPage} difficulty={selectedDifficulty} />;
+      case 'login':
+            return <AuthForm onNavigate={setCurrentPage} />;
       default:
         return <Homepage onNavigate={setCurrentPage} />;
     }

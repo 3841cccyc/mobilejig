@@ -107,20 +107,14 @@ export function Homepage({ onNavigate }: HomepageProps) {
 
         {/* Game Stats */}
         <div className="mt-12 text-center">
-          <div className="grid grid-cols-3 gap-8 max-w-lg mx-auto">
-            <div className="text-primary-foreground">
-              <h3 className="text-2xl">1,247</h3>
-              <p className="text-primary-foreground/70">玩家</p>
-            </div>
-            <div className="text-primary-foreground">
-              <h3 className="text-2xl">856</h3>
-              <p className="text-primary-foreground/70">关卡</p>
-            </div>
-            <div className="text-primary-foreground">
-              <h3 className="text-2xl">4.8★</h3>
-              <p className="text-primary-foreground/70">评分</p>
-            </div>
-          </div>
+                  {/* 登录按钮 */}
+                  <Button
+                      variant="outline"
+                      className="absolute top-4 right-4"
+                      onClick={() => onNavigate('login')}
+                  >
+                      🔐 登录 / 注册
+                  </Button>
         </div>
       </div>
     </div>

@@ -5,6 +5,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Badge } from './ui/badge';
 import { ArrowLeft, Trophy, Medal, Award, Star } from 'lucide-react';
 import { Page } from '../App';
+import { getCurrentUser } from './regis'; // 新增导入
+
+
 
 interface LeaderboardProps {
   onNavigate: (page: Page) => void;
@@ -63,6 +66,7 @@ function getDefaultDataWithIcons(): LeaderboardEntry[] {
         icon: (index === 0 ? 'Trophy' : index === 1 ? 'Medal' : index === 2 ? 'Award' : 'Star') as LeaderboardEntry['icon']
     }));
 }
+
 
 // 恢复数据时重新绑定图标
 function addIconsToData(data: any[]): LeaderboardEntry[] {
@@ -163,6 +167,8 @@ export const submitScore = (
 export function Leaderboard({ onNavigate }: LeaderboardProps) {
     const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
 
+    const currentUser = getCurrentUser();
+
     useEffect(() => {
         setLeaderboardData(getLeaderboardData());
     }, []);
@@ -259,6 +265,43 @@ export function Leaderboard({ onNavigate }: LeaderboardProps) {
                     </Card>
                 </div>
 
+                {/* 当前用户信息 */}
+                <div className="text-center mb-6 text-sm text-muted-foreground">
+                    {currentUser ? (
+                        <span>
+                            当前用户：
+                            <span className="font-medium text-white ml-1">{currentUser.username}</span>
+                            <Button
+                                variant="link"
+                                className="text-xs ml-2 text-blue-400 hover:text-blue-300 p-0 h-auto"
+                                onClick={() => onNavigate('login')}
+                            >
+                                （切换账号）
+                            </Button>
+                        </span>
+                    ) : (
+                        <Button
+                            variant="link"
+                            className="text-sm text-blue-400 hover:text-blue-300 p-0 h-auto"
+                            onClick={() => onNavigate('login')}
+                        >
+                            🔐 登录以绑定你的分数
+                        </Button>
+                    )}
+                </div>
+
+                {currentUser && (
+                    <div className="mt-4 text-center text-sm text-muted-foreground">
+                        你的最佳成绩：
+                        {(() => {
+                            const myRecord = leaderboardData.find(p => p.name === currentUser.username);
+                            return myRecord
+                                ? `${myRecord.score.toLocaleString()} 分（第${myRecord.rank}名，${difficultyNames[myRecord.difficulty]}难度）`
+                                : '暂无记录';
+                        })()}
+                    </div>
+                )}
+
                 {/* Full Leaderboard Table */}
                 <Card className="bg-card/90 backdrop-blur-sm">
                     <CardHeader>
@@ -279,7 +322,9 @@ export function Leaderboard({ onNavigate }: LeaderboardProps) {
                                 {leaderboardData.map((player) => {
                                     const IconComponent = iconMap[player.icon];
                                     return (
-                                        <TableRow key={player.rank} className="hover:bg-muted/50">
+                                        <TableRow key={player.rank}
+                                            className={`hover:bg-muted/50 ${player.name === currentUser?.username ? 'bg-blue-500/20' : ''}`}
+                                        >
                                             <TableCell>
                                                 <div className="flex items-center">
                                                     <span className="mr-2">#{player.rank}</span>
@@ -334,3 +379,4 @@ export function Leaderboard({ onNavigate }: LeaderboardProps) {
         </div>
     );
 }
+

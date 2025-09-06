@@ -32,7 +32,7 @@
               "RelativeDocumentMoniker": "src\\components\\LevelSelection.tsx",
               "ToolTip": "C:\\Users\\lenovo\\Desktop\\Desktop Game Application1.2\\src\\components\\LevelSelection.tsx",
               "RelativeToolTip": "src\\components\\LevelSelection.tsx",
-              "ViewState": "AgIAAEwAAAAAAAAAAAAswGsAAAAXAAAAAAAAAA==",
+              "ViewState": "AgIAAEwAAAAAAAAAAAAswF0AAAAuAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
               "WhenOpened": "2025-09-06T08:26:41.041Z",
               "EditorCaption": ""
@@ -45,10 +45,9 @@
               "RelativeDocumentMoniker": "src\\components\\PuzzleGame.tsx",
               "ToolTip": "C:\\Users\\lenovo\\Desktop\\Desktop Game Application1.2\\src\\components\\PuzzleGame.tsx",
               "RelativeToolTip": "src\\components\\PuzzleGame.tsx",
-              "ViewState": "AgIAAMcCAAAAAAAAAAAswOUCAAABAAAAAAAAAA==",
+              "ViewState": "AgIAANECAAAAAAAAAAAswPUCAAAWAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2025-09-06T08:26:36.237Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-06T08:26:36.237Z"
             },
             {
               "$type": "Document",
@@ -58,10 +57,9 @@
               "RelativeDocumentMoniker": "src\\components\\GamePage.tsx",
               "ToolTip": "C:\\Users\\lenovo\\Desktop\\Desktop Game Application1.2\\src\\components\\GamePage.tsx",
               "RelativeToolTip": "src\\components\\GamePage.tsx",
-              "ViewState": "AgIAALIBAAAAAAAAAAAswNABAAABAAAAAAAAAA==",
+              "ViewState": "AgIAALYBAAAAAAAAAAAswNoBAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2025-09-06T08:26:28.553Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-06T08:26:28.553Z"
             }
           ]
         }

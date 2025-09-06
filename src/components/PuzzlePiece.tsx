@@ -294,8 +294,8 @@ export function PuzzlePiece({
 
                             <image
                                 href={imageUrl}
-                                x={-(position.col * pieceSize)+12}
-                                y={-(position.row * pieceSize)+16}
+                                x={-(position.col * pieceSize) + 12}
+                                y={-(position.row * pieceSize) + 16}
                                 width={gridSize * pieceSize}
                                 height={gridSize * pieceSize}
                                 preserveAspectRatio="xMidYMid slice"

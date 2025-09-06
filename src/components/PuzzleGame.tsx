@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { PuzzlePiece, rotateEdges } from './PuzzlePiece';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Card, CardContent } from './ui/card';
-import { RotateCcw, Undo2, RotateCw, X } from 'lucide-react';
+import { Sparkles, Trophy, Home, RotateCcw, Undo2, RotateCw, X } from 'lucide-react';
 
 interface PuzzleEdge {
     type: 'flat' | 'tab' | 'blank';
@@ -93,7 +94,6 @@ export function PuzzleGame({
     onNavigate,
     difficulty
 }: PuzzleGameProps) {
-
     const [pieces, setPieces] = useState<GamePiece[]>(() => generatePuzzlePieces(gridSize));
     const [puzzleGrid, setPuzzleGrid] = useState<(GamePiece | null)[][]>(() =>
         Array(gridSize).fill(null).map(() => Array(gridSize).fill(null))
@@ -113,7 +113,6 @@ export function PuzzleGame({
     const pieceSize = Math.floor(basePieceSize * scaleFactor);
     const gridCellSize = pieceSize; // Add padding for grid cells
     const puzzleAreaSize = gridSize * gridCellSize;
-
 
     // Check if two pieces can connect
     const canConnect = useCallback((piece1: GamePiece, piece2: GamePiece, direction: 'top' | 'right' | 'bottom' | 'left'): boolean => {
@@ -362,155 +361,12 @@ export function PuzzleGame({
         e.dataTransfer.dropEffect = 'move';
     }, []);
 
-<<<<<<< HEAD
     // Handle grid cell click (select or remove piece)
     const handleGridCellClick = useCallback((gridRow: number, gridCol: number) => {
         const piece = puzzleGrid[gridRow][gridCol];
         if (piece) {
             // Select the piece
             setSelectedPiece(piece.id);
-=======
-  // Handle removing selected piece
-  const handleRemoveSelected = useCallback(() => {
-    if (selectedPiece === null) return;
-    
-    const piece = pieces.find(p => p.id === selectedPiece);
-    if (!piece || !piece.currentGridPosition) return;
-
-    const gridPos = piece.currentGridPosition;
-    
-    // Remove piece from grid
-    const newGrid = puzzleGrid.map(row => [...row]);
-    newGrid[gridPos.row][gridPos.col] = null;
-    
-    const newPieces = pieces.map(p => 
-      p.id === selectedPiece 
-        ? { ...p, currentGridPosition: undefined }
-        : p
-    );
-    
-    setPuzzleGrid(newGrid);
-    setPieces(newPieces);
-
-    // Add to history
-    setMoveHistory(prev => [...prev, {
-      type: 'remove',
-      pieceId: selectedPiece,
-      from: gridPos
-    }]);
-
-    setMoves(prev => prev + 1);
-    setSelectedPiece(null);
-  }, [selectedPiece, pieces, puzzleGrid]);
-
-  // Handle drag start
-  const handlePieceDragStart = useCallback((pieceId: number) => {
-    setDraggedPiece(pieceId);
-    setSelectedPiece(pieceId);
-  }, []);
-
-  // Handle drag end
-  const handlePieceDragEnd = useCallback(() => {
-    setDraggedPiece(null);
-  }, []);
-
-  // Handle drop on grid cell
-  const handleGridCellDrop = useCallback((e: React.DragEvent, gridRow: number, gridCol: number) => {
-    e.preventDefault();
-    
-    const pieceId = parseInt(e.dataTransfer.getData('text/plain'));
-    const piece = pieces.find(p => p.id === pieceId);
-    
-    if (!piece) return;
-
-    // Check if cell is occupied
-    if (puzzleGrid[gridRow][gridCol]) return;
-
-    // Remove piece from its current position if it was placed
-    const newGrid = puzzleGrid.map(row => [...row]);
-    if (piece.currentGridPosition) {
-      newGrid[piece.currentGridPosition.row][piece.currentGridPosition.col] = null;
-    }
-
-    // Place piece in new position
-    newGrid[gridRow][gridCol] = piece;
-    
-    const oldPosition = piece.currentGridPosition;
-    const newPieces = pieces.map(p => 
-      p.id === pieceId 
-        ? { ...p, currentGridPosition: { row: gridRow, col: gridCol } }
-        : p
-    );
-    
-    setPuzzleGrid(newGrid);
-    setPieces(newPieces);
-    setSelectedPiece(pieceId);
-
-    // Add to history
-    setMoveHistory(prev => [...prev, {
-      type: 'place',
-      pieceId,
-      from: oldPosition ? { row: oldPosition.row, col: oldPosition.col } : undefined,
-      to: { row: gridRow, col: gridCol }
-    }]);
-
-    setMoves(prev => prev + 1);
-
-    // Check for completion (only when pieces are in correct positions)
-    const allCorrectlyPlaced = newPieces.every(p => {
-      if (!p.currentGridPosition) return false;
-      return canPlacePiece(p, p.currentGridPosition.row, p.currentGridPosition.col);
-    });
-
-    if (allCorrectlyPlaced) {
-      const timeElapsed = Math.floor((Date.now() - startTime) / 1000);
-      const calculatedScore = calculateScore(moves + 1, timeElapsed, difficulty);
-      setScore(calculatedScore);
-      setGameCompleted(true);
-      onComplete?.(calculatedScore, moves + 1, timeElapsed);
-    }
-  }, [pieces, puzzleGrid, canPlacePiece, moves, startTime, difficulty, onComplete]);
-
-  // Handle drag over grid cell
-  const handleGridCellDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  }, []);
-
-  // Handle grid cell click (select or remove piece)
-  const handleGridCellClick = useCallback((gridRow: number, gridCol: number) => {
-    const piece = puzzleGrid[gridRow][gridCol];
-    if (piece) {
-      // Select the piece
-      setSelectedPiece(piece.id);
-    }
-  }, [puzzleGrid]);
-
-  // Handle undo - FIXED to work with rotation properly
-  const handleUndo = useCallback(() => {
-    if (moveHistory.length === 0) return;
-
-    const lastMove = moveHistory[moveHistory.length - 1];
-    
-    if (lastMove.type === 'place') {
-      // Undo placement
-      const newGrid = puzzleGrid.map(row => [...row]);
-      const newPieces = [...pieces];
-      
-      if (lastMove.to) {
-        newGrid[lastMove.to.row][lastMove.to.col] = null;
-      }
-      
-      const pieceIndex = newPieces.findIndex(p => p.id === lastMove.pieceId);
-      if (pieceIndex !== -1) {
-        newPieces[pieceIndex] = {
-          ...newPieces[pieceIndex],
-          currentGridPosition: lastMove.from
-        };
-        
-        if (lastMove.from) {
-          newGrid[lastMove.from.row][lastMove.from.col] = newPieces[pieceIndex];
->>>>>>> 8b91050fa05de77ec28460c27ab6e576cbdeaaab
         }
     }, [puzzleGrid]);
 
@@ -602,7 +458,6 @@ export function PuzzleGame({
     const unplacedPieces = pieces.filter(piece => !piece.currentGridPosition);
     const selectedPieceData = selectedPiece !== null ? pieces.find(p => p.id === selectedPiece) : null;
 
-<<<<<<< HEAD
     return (
         <div className="flex flex-1 min-h-0">
             {/* Central Puzzle Area - Enlarged */}
@@ -612,7 +467,7 @@ export function PuzzleGame({
                     <div className="bg-card/95 backdrop-blur-sm rounded-lg p-6 shadow-xl">
                         <div
                             className={`grid gap-0 ${gridSize === 3 ? 'grid-cols-3' :
-                                    gridSize === 4 ? 'grid-cols-4' : 'grid-cols-5'
+                                gridSize === 4 ? 'grid-cols-4' : 'grid-cols-5'
                                 }`}
                             style={{
                                 width: `${puzzleAreaSize}px`,
@@ -625,21 +480,6 @@ export function PuzzleGame({
                                 const piece = puzzleGrid[row][col];
                                 const isCorrectPlacement = piece ? canPlacePiece(piece, row, col) : false;
                                 const isSelected = piece && selectedPiece === piece.id;
-=======
-  // Reset game
-  const handleReset = useCallback(() => {
-    const newPieces = generatePuzzlePieces(gridSize);
-    setPieces(newPieces);
-    setPuzzleGrid(Array(gridSize).fill(null).map(() => Array(gridSize).fill(null)));
-    setSelectedPiece(null);
-    setDraggedPiece(null);
-    setGameCompleted(false);
-    setScore(0);
-    setMoves(0);
-    setMoveHistory([]);
-    setStartTime(Date.now()); // Reset start time
-  }, [gridSize]);
->>>>>>> 8b91050fa05de77ec28460c27ab6e576cbdeaaab
 
                                 return (
                                     <div
@@ -921,116 +761,5 @@ export function PuzzleGame({
                 )}
             </AnimatePresence>
         </div>
-<<<<<<< HEAD
     );
 }
-=======
-      </div>
-
-      {/* Right Side Panel - Enlarged */}
-      <div className="w-[480px] p-4 bg-card/95 backdrop-blur-sm border-l border-border space-y-4 min-h-0 flex flex-col">
-        {/* Selected Piece Controls */}
-        {selectedPieceData && (
-          <Card className="flex-shrink-0">
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-3">选中拼图块 #{selectedPieceData.id + 1}</h3>
-              <div className="flex flex-col gap-2">
-                <Button
-                  onClick={handleRotateSelected}
-                  variant="outline"
-                  className="w-full justify-start"
-                >
-                  <RotateCw className="size-4 mr-2" />
-                  逆时针旋转 90°
-                </Button>
-                {selectedPieceData.currentGridPosition && (
-                  <Button
-                    onClick={handleRemoveSelected}
-                    variant="outline"
-                    className="w-full justify-start text-destructive hover:text-destructive"
-                  >
-                    <X className="size-4 mr-2" />
-                    移除拼图块
-                  </Button>
-                )}
-              </div>
-              <div className="mt-3 text-xs text-muted-foreground">
-                <p>状态: {selectedPieceData.currentGridPosition ? '已放置' : '未放置'}</p>
-                <p>旋转: {selectedPieceData.rotation}°</p>
-                {selectedPieceData.currentGridPosition && (
-                  <p>位置: ({selectedPieceData.currentGridPosition.row + 1}, {selectedPieceData.currentGridPosition.col + 1})</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Piece Storage */}
-        <Card className="flex-1 min-h-0">
-          <CardContent className="p-4 h-full flex flex-col">
-            <h3 className="font-medium mb-4 flex-shrink-0">拼图块存储 (剩余 {unplacedPieces.length} 块)</h3>
-            <div 
-              className="grid gap-0 overflow-y-auto flex-1"
-              style={{ 
-                gridTemplateColumns: `repeat(${Math.min(5, Math.ceil(Math.sqrt(unplacedPieces.length)))}, 1fr)`,
-                gridAutoRows: 'min-content'
-              }}
-            >
-              {unplacedPieces.map((piece) => (
-                <div
-                  key={piece.id}
-                  className="relative flex items-center justify-center"
-                  style={{ 
-                    aspectRatio: '1',
-                    minHeight: `${Math.max(60, pieceSize * 0.8)}px`,
-                    overflow: 'visible'
-                  }}
-                >
-                  <PuzzlePiece
-                    id={piece.id}
-                    position={piece.position}
-                    gridSize={gridSize}
-                    rotation={piece.rotation}
-                    imageUrl={imageUrl}
-                    isPlaced={false}
-                    onPieceClick={handlePieceClick}
-                    onPieceRotate={handlePieceRotate}
-                    onPieceDragStart={handlePieceDragStart}
-                    onPieceDragEnd={handlePieceDragEnd}
-                    edges={piece.originalEdges}
-                    isSelected={selectedPiece === piece.id}
-                    isDragging={draggedPiece === piece.id}
-                  />
-                </div>
-              ))}
-            </div>
-            
-            {unplacedPieces.length === 0 && (
-              <div className="text-center text-muted-foreground py-8 flex-shrink-0">
-                <p>所有拼图块已放置！</p>
-                <p className="text-xs mt-2">正确完成拼图即可获胜</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Instructions */}
-        <Card className="flex-shrink-0">
-          <CardContent className="p-4">
-            <h3 className="font-medium mb-2">操作说明</h3>
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p>💡 点击选择拼图块</p>
-              <p>💡 拖拽拼图块到任意位置</p>
-              <p>💡 使用专用按钮瞬间旋转拼图块</p>
-              <p>💡 绿色边框表示正确放置</p>
-              <p>💡 红色边框表示位置错误</p>
-              <p>💡 蓝色边框表示已选中</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-    </div>
-  );
-}
->>>>>>> 8b91050fa05de77ec28460c27ab6e576cbdeaaab

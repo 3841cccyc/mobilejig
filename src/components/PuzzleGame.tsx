@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { PuzzlePiece, rotateEdges } from './PuzzlePiece';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { RotateCcw, Undo2, RotateCw, X } from 'lucide-react';
+import { RotateCcw, Undo2, RotateCw, X, Save } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
 
 interface PuzzleEdge {
@@ -38,6 +38,14 @@ interface PuzzleGameProps {
     onComplete?: (score: number, moves: number, timeElapsed: number) => void;
     onNavigate?: (page: 'home' | 'difficulty' | 'editorDifficulty') => void;
     difficulty: 'easy' | 'medium' | 'hard';
+    level: number;
+    hasSavedGame: boolean;
+    onSaveGame: (gameData: any) => boolean;
+    onLoadGame: () => any;
+    onDeleteSavedGame: () => void;
+    isLoadingSavedGame: boolean;
+    timeLeft: number | null;
+    setTimeLeft: (time: number | null) => void;
 }
 
 // Generate puzzle pieces with jigsaw edges
@@ -85,52 +93,107 @@ function generatePuzzlePieces(gridSize: number): GamePiece[] {
     return pieces.sort(() => Math.random() - 0.5);
 }
 
-export function PuzzleGame({
+const PuzzleGame = forwardRef(({
     gridSize,
     imageUrl,
     onComplete,
     onNavigate,
-    difficulty
-}: PuzzleGameProps) {
-  const [pieces, setPieces] = useState<GamePiece[]>(() => generatePuzzlePieces(gridSize));
-  const [puzzleGrid, setPuzzleGrid] = useState<(GamePiece | null)[][]>(() => 
-    Array(gridSize).fill(null).map(() => Array(gridSize).fill(null))
-  );
-  const [selectedPiece, setSelectedPiece] = useState<number | null>(null);
-  const [draggedPiece, setDraggedPiece] = useState<number | null>(null);
-  const [gameCompleted, setGameCompleted] = useState(false);
-  const [score, setScore] = useState(0);
-  const [moves, setMoves] = useState(0);
-  const [startTime, setStartTime] = useState(Date.now());
-  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
-  const [moveHistory, setMoveHistory] = useState<MoveHistory[]>([]);
-  
-  // 使用设置上下文获取音效功能
-  const { playSfx } = useSettings();
+    difficulty,
+    level,
+    hasSavedGame,
+    onSaveGame,
+    onLoadGame,
+    onDeleteSavedGame,
+    isLoadingSavedGame,
+    timeLeft,
+    setTimeLeft
+}: PuzzleGameProps, ref) => {
+    const [pieces, setPieces] = useState<GamePiece[]>(() => generatePuzzlePieces(gridSize));
+    const [puzzleGrid, setPuzzleGrid] = useState<(GamePiece | null)[][]>(() =>
+        Array(gridSize).fill(null).map(() => Array(gridSize).fill(null))
+    );
+    const [selectedPiece, setSelectedPiece] = useState<number | null>(null);
+    const [draggedPiece, setDraggedPiece] = useState<number | null>(null);
+    const [gameCompleted, setGameCompleted] = useState(false);
+    const [score, setScore] = useState(0);
+    const [moves, setMoves] = useState(0);
+    const [startTime, setStartTime] = useState(Date.now());
+    const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+    const [moveHistory, setMoveHistory] = useState<MoveHistory[]>([]);
 
-  // Reset game when imageUrl changes (new level)
-  useEffect(() => {
-    if (imageUrl) {
-      const newPieces = generatePuzzlePieces(gridSize);
-      setPieces(newPieces);
-      setPuzzleGrid(Array(gridSize).fill(null).map(() => Array(gridSize).fill(null)));
-      setSelectedPiece(null);
-      setDraggedPiece(null);
-      setGameCompleted(false);
-      setScore(0);
-      setMoves(0);
-      setMoveHistory([]);
-      setStartTime(Date.now()); // Reset start time for new level
-    }
-  }, [imageUrl, gridSize]);
+    // 使用设置上下文获取音效功能
+    const { playSfx } = useSettings();
 
-  // Calculate dynamic sizing
-  const basePieceSize = 120;
-  const scaleFactor = Math.max(0.6, 1 - (gridSize - 3) * 0.15);
-  const pieceSize = Math.floor(basePieceSize * scaleFactor);
-  const gridCellSize = pieceSize; // Add padding for grid cells
-  const puzzleAreaSize = gridSize * gridCellSize;
+    // 暴露方法给父组件
+    useImperativeHandle(ref, () => ({
+        saveGame: () => {
+            handleSaveGameProgress();
+        }
+    }));
 
+    // Reset game when imageUrl changes (new level) or when loading saved game
+    useEffect(() => {
+        if (imageUrl) {
+            // 检查是否有保存的游戏进度
+            const savedGame = onLoadGame();
+
+            if (savedGame && isLoadingSavedGame) {
+                // 加载保存的游戏
+                setPieces(savedGame.pieces);
+                setPuzzleGrid(savedGame.puzzleGrid);
+                setMoves(savedGame.moves);
+                setStartTime(savedGame.startTime);
+                setMoveHistory(savedGame.moveHistory);
+                setTimeLeft(savedGame.timeLeft);
+            } else {
+                // 开始新游戏
+                const newPieces = generatePuzzlePieces(gridSize);
+                setPieces(newPieces);
+                setPuzzleGrid(Array(gridSize).fill(null).map(() => Array(gridSize).fill(null)));
+                setSelectedPiece(null);
+                setDraggedPiece(null);
+                setGameCompleted(false);
+                setScore(0);
+                setMoves(0);
+                setMoveHistory([]);
+                setStartTime(Date.now()); // Reset start time for new level
+            }
+        }
+    }, [imageUrl, gridSize, onLoadGame, isLoadingSavedGame, setTimeLeft]);
+
+    // 保存游戏进度
+    useEffect(() => {
+        const handleSaveGame = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                handleSaveGameProgress();
+            }
+        };
+
+        window.addEventListener('keydown', handleSaveGame);
+        return () => window.removeEventListener('keydown', handleSaveGame);
+    }, []);
+
+    const handleSaveGameProgress = useCallback(() => {
+        const gameData = {
+            pieces,
+            puzzleGrid,
+            moves,
+            moveHistory
+        };
+
+        const success = onSaveGame(gameData);
+        if (success) {
+            playSfx('success');
+        }
+    }, [pieces, puzzleGrid, moves, moveHistory, onSaveGame, playSfx]);
+
+    // Calculate dynamic sizing
+    const basePieceSize = 120;
+    const scaleFactor = Math.max(0.6, 1 - (gridSize - 3) * 0.15);
+    const pieceSize = Math.floor(basePieceSize * scaleFactor);
+    const gridCellSize = pieceSize; // Add padding for grid cells
+    const puzzleAreaSize = gridSize * gridCellSize;
 
     // Check if two pieces can connect
     const canConnect = useCallback((piece1: GamePiece, piece2: GamePiece, direction: 'top' | 'right' | 'bottom' | 'left'): boolean => {
@@ -304,13 +367,13 @@ export function PuzzleGame({
         setSelectedPiece(null);
     }, [selectedPiece, pieces, puzzleGrid]);
 
-  // Handle drag start
-  const handlePieceDragStart = useCallback((pieceId: number) => {
-    setDraggedPiece(pieceId);
-    setSelectedPiece(pieceId);
-    // 播放拖动开始音效
-    playSfx('dragStart');
-  }, [playSfx]);
+    // Handle drag start
+    const handlePieceDragStart = useCallback((pieceId: number) => {
+        setDraggedPiece(pieceId);
+        setSelectedPiece(pieceId);
+        // 播放拖动开始音效
+        playSfx('dragStart');
+    }, [playSfx]);
 
     // Handle drag end
     const handlePieceDragEnd = useCallback(() => {
@@ -335,22 +398,22 @@ export function PuzzleGame({
             newGrid[piece.currentGridPosition.row][piece.currentGridPosition.col] = null;
         }
 
-    // Place piece in new position
-    newGrid[gridRow][gridCol] = piece;
-    
-    const oldPosition = piece.currentGridPosition;
-    const newPieces = pieces.map(p => 
-      p.id === pieceId 
-        ? { ...p, currentGridPosition: { row: gridRow, col: gridCol } }
-        : p
-    );
-    
-    setPuzzleGrid(newGrid);
-    setPieces(newPieces);
-    setSelectedPiece(pieceId);
+        // Place piece in new position
+        newGrid[gridRow][gridCol] = piece;
 
-    // 播放放置结束音效
-    playSfx('dragEnd');
+        const oldPosition = piece.currentGridPosition;
+        const newPieces = pieces.map(p =>
+            p.id === pieceId
+                ? { ...p, currentGridPosition: { row: gridRow, col: gridCol } }
+                : p
+        );
+
+        setPuzzleGrid(newGrid);
+        setPieces(newPieces);
+        setSelectedPiece(pieceId);
+
+        // 播放放置结束音效
+        playSfx('dragEnd');
 
         // Add to history
         setMoveHistory(prev => [...prev, {
@@ -463,19 +526,22 @@ export function PuzzleGame({
         return Math.floor((baseScore + timeBonus + moveBonus) * difficultyMultiplier);
     }
 
-  // Reset game
-  const handleReset = useCallback(() => {
-    const newPieces = generatePuzzlePieces(gridSize);
-    setPieces(newPieces);
-    setPuzzleGrid(Array(gridSize).fill(null).map(() => Array(gridSize).fill(null)));
-    setSelectedPiece(null);
-    setDraggedPiece(null);
-    setGameCompleted(false);
-    setScore(0);
-    setMoves(0);
-    setMoveHistory([]);
-    setStartTime(Date.now()); // Reset start time
-  }, [gridSize]);
+    // Reset game
+    const handleReset = useCallback(() => {
+        const newPieces = generatePuzzlePieces(gridSize);
+        setPieces(newPieces);
+        setPuzzleGrid(Array(gridSize).fill(null).map(() => Array(gridSize).fill(null)));
+        setSelectedPiece(null);
+        setDraggedPiece(null);
+        setGameCompleted(false);
+        setScore(0);
+        setMoves(0);
+        setMoveHistory([]);
+        setStartTime(Date.now()); // Reset start time
+
+        // 删除保存的游戏进度
+        onDeleteSavedGame();
+    }, [gridSize, onDeleteSavedGame]);
 
     // Get pieces not placed on grid
     const unplacedPieces = pieces.filter(piece => !piece.currentGridPosition);
@@ -490,7 +556,7 @@ export function PuzzleGame({
                     <div className="bg-card/95 backdrop-blur-sm rounded-lg p-6 shadow-xl">
                         <div
                             className={`grid gap-0 ${gridSize === 3 ? 'grid-cols-3' :
-                                    gridSize === 4 ? 'grid-cols-4' : 'grid-cols-5'
+                                gridSize === 4 ? 'grid-cols-4' : 'grid-cols-5'
                                 }`}
                             style={{
                                 width: `${puzzleAreaSize}px`,
@@ -530,7 +596,7 @@ export function PuzzleGame({
                                                 onPieceDragEnd={handlePieceDragEnd}
                                                 edges={piece.originalEdges}
                                                 isSelected={selectedPiece === piece.id}
-                                                cellSize={gridCellSize}   //新增
+                                                cellSize={gridCellSize}
                                                 className=""
                                             />
                                         )}
@@ -565,6 +631,15 @@ export function PuzzleGame({
                         >
                             <RotateCcw className="size-4 mr-2" />
                             重置
+                        </Button>
+                        <Button
+                            onClick={handleSaveGameProgress}
+                            size="sm"
+                            variant="outline"
+                            className="bg-card/95 backdrop-blur-sm shadow-lg"
+                        >
+                            <Save className="size-4 mr-2" />
+                            保存进度
                         </Button>
                     </div>
                 </div>
@@ -643,7 +718,7 @@ export function PuzzleGame({
                                         edges={piece.originalEdges}
                                         isSelected={selectedPiece === piece.id}
                                         isDragging={draggedPiece === piece.id}
-                                        cellSize={gridCellSize}   // <-- 新增
+                                        cellSize={gridCellSize}
                                     />
                                 </div>
                             ))}
@@ -669,10 +744,15 @@ export function PuzzleGame({
                             <p>💡 绿色边框表示正确放置</p>
                             <p>💡 红色边框表示位置错误</p>
                             <p>💡 蓝色边框表示已选中</p>
+                            <p>💡 Ctrl+S 或点击底部按钮保存进度</p>
                         </div>
                     </CardContent>
                 </Card>
             </div>
         </div>
     );
-}
+});
+
+PuzzleGame.displayName = 'PuzzleGame';
+
+export { PuzzleGame };

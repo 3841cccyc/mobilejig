@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
-import { Pause, Volume2, VolumeX } from 'lucide-react';
+import { Pause, Volume2, VolumeX, Save } from 'lucide-react';
 import { Page } from '../App';
 import { PuzzleGame } from './PuzzleGame';
 import { getCurrentUser } from './regis'; // 导入获取当前用户的函数
@@ -18,16 +18,29 @@ interface GamePageProps {
 }
 
 const difficultySettings = {
-      easy: { timeLimit: null, pointMultiplier: 1, gridSize: 3 },
-      medium: { timeLimit: 300, pointMultiplier: 1.5, gridSize: 4 },
-      hard: { timeLimit: 180, pointMultiplier: 2, gridSize: 5 }
+    easy: { timeLimit: null, pointMultiplier: 1, gridSize: 3 },
+    medium: { timeLimit: 300, pointMultiplier: 1.5, gridSize: 4 },
+    hard: { timeLimit: 180, pointMultiplier: 2, gridSize: 5 }
 };
 
 const difficultyConfig = {
-      easy: { color: 'bg-green-500', name: '简单 (3x3)' },
-      medium: { color: 'bg-yellow-500', name: '中等 (4x4)' },
-      hard: { color: 'bg-red-500', name: '困难 (5x5)' }
+    easy: { color: 'bg-green-500', name: '简单 (3x3)' },
+    medium: { color: 'bg-yellow-500', name: '中等 (4x4)' },
+    hard: { color: 'bg-red-500', name: '困难 (5x5)' }
 };
+
+// 保存游戏进度的接口
+interface GameSaveData {
+    pieces: any[];
+    puzzleGrid: any[][];
+    moves: number;
+    timeLeft: number | null;
+    startTime: number;
+    moveHistory: any[];
+    difficulty: string;
+    level: number;
+    timestamp: number;
+}
 
 export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePageProps) {
     const [timeLeft, setTimeLeft] = useState(difficultySettings[difficulty].timeLimit);
@@ -40,13 +53,18 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
     const [finalScore, setFinalScore] = useState(0);
     const [completionTime, setCompletionTime] = useState(0);
     const [currentUser, setCurrentUser] = useState(getCurrentUser());
+    const [showLoadDialog, setShowLoadDialog] = useState(false);
+    const [hasSavedGame, setHasSavedGame] = useState(false);
+    const [isLoadingSavedGame, setIsLoadingSavedGame] = useState(false);
+
+    const puzzleGameRef = useRef<any>(null);
 
     const settings = difficultySettings[difficulty];
     const config = difficultyConfig[difficulty];
-    
+
     // 使用设置上下文
     const { isMusicOn, playBackgroundMusic, stopBackgroundMusic } = useSettings();
-    
+
     // Check if there's a next level available
     const hasNextLevel = level < levels[difficulty].length;
 
@@ -59,8 +77,26 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
         if (!user) {
             alert('请先登录后再开始游戏');
             onNavigate('home');
+            return;
         }
-    }, []);
+
+        // 检查是否有保存的游戏进度
+        checkForSavedGame();
+    }, [difficulty, level]);
+
+    // 检查是否有保存的游戏进度
+    const checkForSavedGame = useCallback(() => {
+        if (!currentUser) return;
+
+        const saveKey = `puzzle_game_save_${currentUser.username}_${difficulty}_${level}`;
+        const savedGame = localStorage.getItem(saveKey);
+        setHasSavedGame(!!savedGame);
+
+        // 如果有保存的进度，显示加载对话框
+        if (savedGame) {
+            setShowLoadDialog(true);
+        }
+    }, [currentUser, difficulty, level]);
 
     // Load puzzle image based on selected level
     useEffect(() => {
@@ -83,26 +119,26 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
 
         loadPuzzleImage();
     }, [difficulty, level]);
-     
+
     // 背景音乐控制
-     useEffect(() => {
+    useEffect(() => {
         if (isMusicOn && gameState === 'playing' && !isPaused) {
             playBackgroundMusic();
         } else {
             stopBackgroundMusic();
         }
     }, [isMusicOn, gameState, isPaused, playBackgroundMusic, stopBackgroundMusic]);
-      // Timer effect
-      useEffect(() => {
-            if (gameState === 'playing' && timeLeft !== null && timeLeft > 0) {
-                  const timer = setTimeout(() => {
-                        setTimeLeft(prev => prev! - 1);
-                  }, 1000);
-                  return () => clearTimeout(timer);
-            } else if (timeLeft === 0) {
-                  setGameState('gameOver');
-            }
-      }, [timeLeft, gameState]);
+    // Timer effect
+    useEffect(() => {
+        if (gameState === 'playing' && timeLeft !== null && timeLeft > 0) {
+            const timer = setTimeout(() => {
+                setTimeLeft(prev => prev! - 1);
+            }, 1000);
+            return () => clearTimeout(timer);
+        } else if (timeLeft === 0) {
+            setGameState('gameOver');
+        }
+    }, [timeLeft, gameState]);
 
     const formatTime = (seconds: number | null) => {
         if (seconds === null) return '无时间限制';
@@ -111,28 +147,87 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const handlePauseMenuAction = (action: 'home' | 'difficulty') => {
+    // 保存游戏进度
+    const saveGameProgress = useCallback((gameData: any) => {
+        if (!currentUser) return false;
+
+        const saveKey = `puzzle_game_save_${currentUser.username}_${difficulty}_${level}`;
+        const saveData: GameSaveData = {
+            pieces: gameData.pieces,
+            puzzleGrid: gameData.puzzleGrid,
+            moves: gameData.moves,
+            timeLeft: timeLeft,
+            startTime: Date.now() - (timeLeft !== null ? (settings.timeLimit! - timeLeft) * 1000 : 0),
+            moveHistory: gameData.moveHistory,
+            difficulty,
+            level,
+            timestamp: Date.now()
+        };
+
+        try {
+            localStorage.setItem(saveKey, JSON.stringify(saveData));
+            setHasSavedGame(true);
+            alert('游戏进度已保存！');
+            return true;
+        } catch (error) {
+            console.error('保存游戏进度失败:', error);
+            alert('保存游戏进度失败，请重试');
+            return false;
+        }
+    }, [currentUser, difficulty, level, timeLeft, settings.timeLimit]);
+
+    // 加载游戏进度
+    const loadGameProgress = useCallback(() => {
+        if (!currentUser) return null;
+
+        const saveKey = `puzzle_game_save_${currentUser.username}_${difficulty}_${level}`;
+        try {
+            const savedData = localStorage.getItem(saveKey);
+            if (!savedData) return null;
+
+            return JSON.parse(savedData) as GameSaveData;
+        } catch (error) {
+            console.error('加载游戏进度失败:', error);
+            return null;
+        }
+    }, [currentUser, difficulty, level]);
+
+    // 删除保存的游戏进度
+    const deleteSavedGame = useCallback(() => {
+        if (!currentUser) return;
+
+        const saveKey = `puzzle_game_save_${currentUser.username}_${difficulty}_${level}`;
+        localStorage.removeItem(saveKey);
+        setHasSavedGame(false);
+    }, [currentUser, difficulty, level]);
+
+    const handlePauseMenuAction = (action: 'home' | 'difficulty' | 'save') => {
         if (action === 'home') {
             onNavigate('home');
-        } else {
+        } else if (action === 'difficulty') {
             onNavigate('difficulty');
+        } else if (action === 'save') {
+            // 调用PuzzleGame的保存方法
+            if (puzzleGameRef.current) {
+                puzzleGameRef.current.saveGame();
+            }
         }
         setIsPaused(false);
     };
 
-      const handleGameComplete = (score: number, totalMoves: number, timeElapsed: number) => {
-            setMoves(totalMoves);
+    const handleGameComplete = (score: number, totalMoves: number, timeElapsed: number) => {
+        setMoves(totalMoves);
         setFinalScore(score);
         setCompletionTime(timeElapsed);
-            setFinalScore(score);
-        setCompletionTime(timeElapsed);
         setGameState('completed');
+
+        // 完成游戏后删除保存的进度
+        deleteSavedGame();
 
         // 使用当前用户信息自动提交分数
         if (currentUser) {
             const level = Math.max(1, Math.floor(score / 5000));
-            const entered = submitScore(currentUser.username, score, difficulty, level);
-
+            submitScore(currentUser.username, score, difficulty, level);
             setShowCompletionDialog(true);
         }
     };
@@ -147,8 +242,22 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
 
     const handleNextLevel = () => {
         if (hasNextLevel) {
+            // 进入下一关前删除当前关卡的保存
+            deleteSavedGame();
             setShowCompletionDialog(false);
             onNextLevel();
+        }
+    };
+
+    // 处理加载游戏进度选择
+    const handleLoadChoice = (loadSaved: boolean) => {
+        setShowLoadDialog(false);
+
+        if (loadSaved) {
+            setIsLoadingSavedGame(true);
+        } else {
+            // 用户选择重新开始，删除保存的进度
+            deleteSavedGame();
         }
     };
 
@@ -218,11 +327,20 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
 
             {/* Main Game Area */}
             <PuzzleGame
+                ref={puzzleGameRef}
                 gridSize={settings.gridSize}
                 imageUrl={puzzleImageUrl}
                 onComplete={handleGameComplete}
                 onNavigate={handleNavigate}
                 difficulty={difficulty}
+                level={level}
+                hasSavedGame={hasSavedGame}
+                onSaveGame={saveGameProgress}
+                onLoadGame={loadGameProgress}
+                onDeleteSavedGame={deleteSavedGame}
+                isLoadingSavedGame={isLoadingSavedGame}
+                timeLeft={timeLeft}
+                setTimeLeft={setTimeLeft}
             />
 
             {/* Pause Menu Dialog */}
@@ -232,6 +350,14 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
                         <DialogTitle>游戏暂停</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
+                        <Button
+                            onClick={() => handlePauseMenuAction('save')}
+                            variant="outline"
+                            className="w-full"
+                        >
+                            <Save className="size-4 mr-2" />
+                            保存当前进度
+                        </Button>
                         <Button
                             onClick={() => handlePauseMenuAction('home')}
                             variant="outline"
@@ -253,6 +379,35 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
                             继续游戏
                         </Button>
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Load Game Dialog */}
+            <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>发现保存的游戏进度</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <p>检测到有保存的游戏进度，您想要：</p>
+                    </div>
+                    <DialogFooter>
+                        <div className="flex flex-col gap-2 w-full">
+                            <Button
+                                onClick={() => handleLoadChoice(true)}
+                                className="w-full"
+                            >
+                                继续上次进度
+                            </Button>
+                            <Button
+                                onClick={() => handleLoadChoice(false)}
+                                variant="outline"
+                                className="w-full"
+                            >
+                                重新开始
+                            </Button>
+                        </div>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 

@@ -5,24 +5,30 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Badge } from './ui/badge';
 import { ArrowLeft, Trophy, Medal, Award, Star } from 'lucide-react';
 import { Page } from '../App';
+import { getCurrentUser } from './regis'; // 新增导入
+
+
 
 interface LeaderboardProps {
   onNavigate: (page: Page) => void;
 }
 
-// Mock leaderboard data
-const leaderboardData = [
-  { rank: 1, name: "拼图大师2024", score: 98750, difficulty: "hard", level: 15, icon: Trophy },
-  { rank: 2, name: "拼图向导", score: 95240, difficulty: "hard", level: 14, icon: Medal },
-  { rank: 3, name: "逻辑君主", score: 92180, difficulty: "medium", level: 18, icon: Award },
-  { rank: 4, name: "智力破坏者", score: 89650, difficulty: "hard", level: 13, icon: Star },
-  { rank: 5, name: "思维修复者", score: 87320, difficulty: "medium", level: 16, icon: Star },
-  { rank: 6, name: "思考坦克", score: 85940, difficulty: "medium", level: 15, icon: Star },
-  { rank: 7, name: "策略风暴", score: 83210, difficulty: "easy", level: 22, icon: Star },
-  { rank: 8, name: "拼图专家", score: 81750, difficulty: "medium", level: 14, icon: Star },
-  { rank: 9, name: "逻辑传奇", score: 79860, difficulty: "easy", level: 20, icon: Star },
-  { rank: 10, name: "智力宝盒", score: 77540, difficulty: "hard", level: 11, icon: Star },
-];
+interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  score: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  level: number;
+  icon: 'Trophy' | 'Medal' | 'Award' | 'Star';
+}
+
+// 图标映射
+const iconMap = {
+  Trophy,
+  Medal,
+  Award,
+  Star
+};
 
 const difficultyColors = {
   easy: "bg-green-500",
@@ -36,7 +42,175 @@ const difficultyNames = {
   hard: "困难"
 };
 
+// 存储键名
+const STORAGE_KEY = 'puzzle_leaderboard';
+
+// 默认数据（分数为 0）
+const DEFAULT_DATA: Omit<LeaderboardEntry, 'icon'>[] = [
+    { rank: 1, name: "拼图大师2024", score: 0, difficulty: "hard", level: 15 },
+    { rank: 2, name: "拼图向导", score: 0, difficulty: "hard", level: 14 },
+    { rank: 3, name: "逻辑君主", score: 0, difficulty: "medium", level: 18 },
+    { rank: 4, name: "智力破坏者", score: 0, difficulty: "hard", level: 13 },
+    { rank: 5, name: "思维修复者", score: 0, difficulty: "medium", level: 16 },
+    { rank: 6, name: "思考坦克", score: 0, difficulty: "medium", level: 15 },
+    { rank: 7, name: "策略风暴", score: 0, difficulty: "easy", level: 22 },
+    { rank: 8, name: "拼图专家", score: 0, difficulty: "medium", level: 14 },
+    { rank: 9, name: "逻辑传奇", score: 0, difficulty: "easy", level: 20 },
+    { rank: 10, name: "智力宝盒", score: 0, difficulty: "hard", level: 11 },
+];
+
+// 工具函数：给默认数据加上图标
+function getDefaultDataWithIcons(): LeaderboardEntry[] {
+    return DEFAULT_DATA.map((item, index) => ({
+        ...item,
+        icon: (index === 0 ? 'Trophy' : index === 1 ? 'Medal' : index === 2 ? 'Award' : 'Star') as LeaderboardEntry['icon']
+    }));
+}
+
+
+// 恢复数据时重新绑定图标
+function addIconsToData(data: any[]): LeaderboardEntry[] {
+    return data.map(item => ({
+        ...item,
+        icon: item.icon || 'Star'
+    }));
+}
+
+// 获取排行榜数据
+const getLeaderboardData = (): LeaderboardEntry[] => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) {
+        // 首次运行：初始化为默认数据（分数为0）
+        resetLeaderboard();
+        return getDefaultDataWithIcons();
+    }
+    try {
+        const data: LeaderboardEntry[] = JSON.parse(saved);
+        return addIconsToData(data);
+    } catch (e) {
+        console.error('排行榜数据解析失败，重置为默认值', e);
+        resetLeaderboard();
+        return getDefaultDataWithIcons();
+    }
+};
+
+// 保存排行榜数据
+const saveLeaderboardData = (data: LeaderboardEntry[]) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+};
+
+// 将所有分数置零
+export const resetLeaderboard = () => {
+    const resetData = getDefaultDataWithIcons().map(d => ({ ...d, score: 0 }));
+    saveLeaderboardData(resetData);
+};
+
+// 提交分数：更新或插入排行榜（累加分数）
+export const submitScore = (
+    name: string,
+    score: number,
+    difficulty: 'easy' | 'medium' | 'hard',
+    level: number
+): boolean => {
+    const currentData = getLeaderboardData();
+
+    // 查找是否已有该玩家
+    const playerIndex = currentData.findIndex(p => p.name === name);
+
+    let updatedData = [...currentData];
+
+    if (playerIndex > -1) {
+        // 玩家已存在：累加分数（不是只保留更高分）
+        updatedData[playerIndex] = {
+            ...updatedData[playerIndex],
+            score: updatedData[playerIndex].score + score, // 累加分数
+            difficulty, // 更新为最近一次游戏的难度
+            level: Math.max(updatedData[playerIndex].level, level) // 保留最高关卡
+        };
+    } else {
+        // 玩家不存在：尝试插入
+        // 检查是否能进前10（比较最低分）
+        const minScoreInList = updatedData[updatedData.length - 1]?.score || 0;
+        if (score > minScoreInList || updatedData.length < 10) {
+            // 插入新玩家
+            const newEntry: LeaderboardEntry = {
+                rank: 0, // 临时
+                name,
+                score,
+                difficulty,
+                level,
+                icon: 'Star' // 默认图标
+            };
+            updatedData.push(newEntry);
+        } else {
+            // 分数太低，未进榜
+            return false;
+        }
+    }
+
+    // 按分数降序排序
+    updatedData.sort((a, b) => b.score - a.score);
+
+    // 重新分配排名（1 到 10）
+    updatedData = updatedData.slice(0, 10).map((item, index) => ({
+        ...item,
+        rank: index + 1
+    }));
+
+    // 补全图标（防止缺失）
+    updatedData = addIconsToData(updatedData);
+
+    // 保存
+    saveLeaderboardData(updatedData);
+
+    return true; // 成功进入排行榜
+};
+
+// 主组件
 export function Leaderboard({ onNavigate }: LeaderboardProps) {
+    const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+
+    const currentUser = getCurrentUser();
+
+    useEffect(() => {
+        setLeaderboardData(getLeaderboardData());
+    }, []);
+
+
+    // 添加登录检查
+    useEffect(() => {
+        if (!currentUser) {
+            alert('请先登录后再查看排行榜');
+            onNavigate('home');
+        }
+    }, [currentUser, onNavigate]);
+
+    const handleReset = () => {
+        if (window.confirm('确定要将所有分数清零吗？此操作不可撤销！')) {
+            resetLeaderboard();
+            setLeaderboardData(getLeaderboardData());
+        }
+    };
+
+    const handleTestSubmit = () => {
+        const playerName = leaderboardData[0]?.name || "神秘玩家";
+        const newScore = Math.floor(Math.random() * 80000); // 0 ~ 80,000
+        const difficulties: ('easy' | 'medium' | 'hard')[] = ['easy', 'medium', 'hard'];
+        const difficulty = difficulties[Math.floor(Math.random() * 3)];
+        const level = Math.max(1, Math.floor(newScore / 5000));
+
+        const entered = submitScore(playerName, newScore, difficulty, level);
+
+        // 强制刷新 UI
+        setLeaderboardData(getLeaderboardData());
+
+        alert(
+            entered
+                ? `🎉 提交成功！${playerName} 得分：${newScore.toLocaleString()}，已更新排行榜！`
+                : `💡 提交成功，但分数未进入前10名。`
+        );
+    };
+
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-6xl mx-auto">
@@ -54,7 +228,9 @@ export function Leaderboard({ onNavigate }: LeaderboardProps) {
             <Trophy className="size-10 mr-4 text-yellow-400" />
             排行榜
           </h1>
-          <div></div>
+                    <Button variant="outline" size="sm" onClick={handleReset} className="text-red-400">
+                        🚫 清零分数
+                    </Button>
         </div>
 
         {/* Top 3 Podium */}
@@ -66,8 +242,8 @@ export function Leaderboard({ onNavigate }: LeaderboardProps) {
                 <Medal className="size-8 text-white" />
               </div>
               <h3 className="text-lg">第2名</h3>
-              <p className="text-2xl">{leaderboardData[1].name}</p>
-              <p className="text-xl text-muted-foreground">{leaderboardData[1].score.toLocaleString()}</p>
+                            <p className="text-2xl">{leaderboardData[1]?.name || '暂无'}</p>
+                            <p className="text-xl text-muted-foreground">{(leaderboardData[1]?.score || 0).toLocaleString()}</p>
             </CardHeader>
           </Card>
 
@@ -83,8 +259,8 @@ export function Leaderboard({ onNavigate }: LeaderboardProps) {
                 <Trophy className="size-8 text-white" />
               </div>
               <h3 className="text-lg">第1名</h3>
-              <p className="text-2xl">{leaderboardData[0].name}</p>
-              <p className="text-xl text-muted-foreground">{leaderboardData[0].score.toLocaleString()}</p>
+                            <p className="text-2xl">{leaderboardData[0]?.name || '暂无'}</p>
+                            <p className="text-xl text-muted-foreground">{(leaderboardData[0]?.score || 0).toLocaleString()}</p>
             </CardHeader>
           </Card>
 
@@ -95,11 +271,48 @@ export function Leaderboard({ onNavigate }: LeaderboardProps) {
                 <Award className="size-8 text-white" />
               </div>
               <h3 className="text-lg">第3名</h3>
-              <p className="text-2xl">{leaderboardData[2].name}</p>
-              <p className="text-xl text-muted-foreground">{leaderboardData[2].score.toLocaleString()}</p>
+                            <p className="text-2xl">{leaderboardData[2]?.name || '暂无'}</p>
+                            <p className="text-xl text-muted-foreground">{(leaderboardData[2]?.score || 0).toLocaleString()}</p>
             </CardHeader>
           </Card>
         </div>
+
+                {/* 当前用户信息 */}
+                <div className="text-center mb-6 text-sm text-muted-foreground">
+                    {currentUser ? (
+                        <span>
+                            当前用户：
+                            <span className="font-medium text-white ml-1">{currentUser.username}</span>
+                            <Button
+                                variant="link"
+                                className="text-xs ml-2 text-blue-400 hover:text-blue-300 p-0 h-auto"
+                                onClick={() => onNavigate('login')}
+                            >
+                                （切换账号）
+                            </Button>
+                        </span>
+                    ) : (
+                        <Button
+                            variant="link"
+                            className="text-sm text-blue-400 hover:text-blue-300 p-0 h-auto"
+                            onClick={() => onNavigate('login')}
+                        >
+                            🔐 登录以绑定你的分数
+                        </Button>
+                    )}
+                </div>
+
+                {currentUser && (
+                    <div className="mt-4 text-center text-sm text-muted-foreground">
+                        你的最佳成绩：
+                        {(() => {
+                            const myRecord = leaderboardData.find(p => p.name === currentUser.username);
+                            return myRecord
+                                ? `${myRecord.score.toLocaleString()} 分（第${myRecord.rank}名，${difficultyNames[myRecord.difficulty]}难度）`
+                                : '暂无记录';
+                        })()}
+                    </div>
+                )}
 
         {/* Full Leaderboard Table */}
         <Card className="bg-card/90 backdrop-blur-sm">
@@ -119,15 +332,16 @@ export function Leaderboard({ onNavigate }: LeaderboardProps) {
               </TableHeader>
               <TableBody>
                 {leaderboardData.map((player) => {
-                  const IconComponent = player.icon;
+                                    const IconComponent = iconMap[player.icon];
                   return (
-                    <TableRow key={player.rank} className="hover:bg-muted/50">
+                                        <TableRow key={player.rank}
+                                            className={`hover:bg-muted/50 ${player.name === currentUser?.username ? 'bg-blue-500/20' : ''}`}
+                                        >
                       <TableCell>
                         <div className="flex items-center">
                           <span className="mr-2">#{player.rank}</span>
-                          {player.rank <= 3 && (
-                            <IconComponent className={`size-4 ${
-                              player.rank === 1 ? 'text-yellow-400' : 
+                                                    {player.rank <= 3 && IconComponent && (
+                                                        <IconComponent className={`size-4 ${player.rank === 1 ? 'text-yellow-400' :
                               player.rank === 2 ? 'text-gray-400' : 
                               'text-amber-600'
                             }`} />
@@ -151,7 +365,7 @@ export function Leaderboard({ onNavigate }: LeaderboardProps) {
         </Card>
 
         {/* Action Buttons */}
-        <div className="flex justify-center gap-4 mt-8">
+                <div className="flex flex-wrap justify-center gap-4 mt-8">
           <Button 
             onClick={() => onNavigate('difficulty')}
             className="bg-primary hover:bg-primary/90"
@@ -164,8 +378,17 @@ export function Leaderboard({ onNavigate }: LeaderboardProps) {
           >
             查看我的统计
           </Button>
+
+                    <Button
+                        variant="default"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        onClick={handleTestSubmit}
+                    >
+                        🎯 模拟提交分数
+                    </Button>
         </div>
       </div>
     </div>
   );
 }
+

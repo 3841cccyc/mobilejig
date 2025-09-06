@@ -1,17 +1,60 @@
 import React from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Play, Trophy, Settings, Edit3, Gamepad2 } from 'lucide-react';
+import { Play, Trophy, Settings, Edit3, Gamepad2, User, LogOut } from 'lucide-react';
 import { Page } from '../App';
+import { getCurrentUser, logout } from './regis'; // 导入获取当前用户和退出登录的函数
 
 interface HomepageProps {
   onNavigate: (page: Page) => void;
 }
 
 export function Homepage({ onNavigate }: HomepageProps) {
+    const [currentUser, setCurrentUser] = useState(getCurrentUser());
+
+    // 检查登录状态的通用函数
+    const checkLoginAndNavigate = (page: Page) => {
+        if (!currentUser && page !== 'login') {
+            alert('请先登录后再进行操作');
+            onNavigate('login');
+        } else {
+            onNavigate(page);
+        }
+    };
+
+    // 处理退出登录
+    const handleLogout = () => {
+        logout(); // 调用退出登录函数
+        setCurrentUser(null); // 清除本地状态
+        alert('已成功退出登录');
+    };
+
+    // 监听用户状态变化
+    useEffect(() => {
+        const user = getCurrentUser();
+        setCurrentUser(user);
+    }, []);
+
   return (
     <div className="min-h-screen flex items-center justify-center p-8">
       <div className="max-w-4xl w-full">
+                {/* 用户信息栏 - 固定在右上角 */}
+                {currentUser && (
+                    <div className="absolute top-4 right-4 flex items-center gap-2 bg-card/80 backdrop-blur-sm rounded-full px-4 py-2 shadow-md">
+                        <User className="size-4 text-primary-foreground" />
+                        <span className="text-sm text-primary-foreground">{currentUser.username}</span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleLogout}
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                            title="退出登录"
+                        >
+                            <LogOut className="size-4" />
+                        </Button>
+                    </div>
+                )}
+
         {/* Main Title */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-6">
@@ -21,6 +64,16 @@ export function Homepage({ onNavigate }: HomepageProps) {
           <p className="text-xl text-primary-foreground/80 max-w-2xl mx-auto">
             欢迎来到终极游戏体验。创建、游玩并在富有挑战性的拼图游戏中竞争。
           </p>
+
+                    {/* 用户欢迎信息 */}
+                    {currentUser && (
+                        <div className="mt-6 p-4 bg-card/50 backdrop-blur-sm rounded-lg inline-block">
+                            <div className="flex items-center justify-center text-primary-foreground">
+                                <User className="size-6 mr-2" />
+                                <span>欢迎回来, {currentUser.username}!</span>
+                            </div>
+                        </div>
+                    )}
         </div>
 
         {/* Navigation Cards */}
@@ -38,7 +91,7 @@ export function Homepage({ onNavigate }: HomepageProps) {
             <CardContent>
               <Button 
                 className="w-full" 
-                onClick={() => onNavigate('difficulty')}
+                                onClick={() => checkLoginAndNavigate('difficulty')}
               >
                 开始游玩
               </Button>
@@ -59,7 +112,7 @@ export function Homepage({ onNavigate }: HomepageProps) {
               <Button 
                 variant="outline" 
                 className="w-full"
-                onClick={() => onNavigate('leaderboard')}
+                                onClick={() => checkLoginAndNavigate('leaderboard')}
               >
                 查看分数
               </Button>
@@ -80,7 +133,7 @@ export function Homepage({ onNavigate }: HomepageProps) {
               <Button 
                 variant="outline" 
                 className="w-full"
-                onClick={() => onNavigate('editorDifficulty')}
+                                onClick={() => checkLoginAndNavigate('editorDifficulty')}
               >
                 打开编辑器
               </Button>
@@ -98,14 +151,18 @@ export function Homepage({ onNavigate }: HomepageProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full">
+                            <Button
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => checkLoginAndNavigate('home')}
+                            >
                 设置
               </Button>
             </CardContent>
           </Card>
         </div>
 
-        {/* Game Stats */}
+                {/* Game Stats and Login Button */}
         <div className="mt-12 text-center">
           <div className="grid grid-cols-3 gap-8 max-w-lg mx-auto">
             <div className="text-primary-foreground">
@@ -121,6 +178,20 @@ export function Homepage({ onNavigate }: HomepageProps) {
               <p className="text-primary-foreground/70">评分</p>
             </div>
           </div>
+
+                    {/* 登录/注册按钮 */}
+                    <div className="mt-8">
+                        {!currentUser && (
+                            <Button
+                                variant="outline"
+                                onClick={() => onNavigate('login')}
+                                className="flex items-center gap-2 mx-auto"
+                            >
+                                <User className="size-4" />
+                                登录 / 注册
+                            </Button>
+                        )}
+                    </div>
         </div>
       </div>
     </div>

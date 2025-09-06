@@ -50,9 +50,9 @@ const difficulties = [
 ];
 
 export function DifficultySelection({ onNavigate, onSelectDifficulty, selectedDifficulty }: DifficultySelectionProps) {
-  const handleStartGame = () => {
+  const handleSelectLevel = () => {
     onSelectDifficulty(selectedDifficulty);
-    onNavigate('game');
+    onNavigate('levelSelection');
   };
 
   return (
@@ -157,10 +157,10 @@ export function DifficultySelection({ onNavigate, onSelectDifficulty, selectedDi
         {/* Action Buttons */}
         <div className="flex justify-center gap-4">
           <Button 
-            onClick={handleStartGame}
+            onClick={handleSelectLevel}
             className="bg-primary hover:bg-primary/90 text-lg px-8 py-3"
           >
-            开始游戏 ({difficulties.find(d => d.id === selectedDifficulty)?.title})
+            选择关卡 ({difficulties.find(d => d.id === selectedDifficulty)?.title})
           </Button>
           <Button 
             variant="outline"

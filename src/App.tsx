@@ -12,7 +12,7 @@ import { LevelSelection } from './components/LevelSelection';
 
 
 // 扩展 Page 类型
-export type Page = 'home' | 'difficulty' | 'leaderboard' | 'editorDifficulty' | 'login' | 'game' | 'editor' | 'settings';
+export type Page = 'home' | 'difficulty' | 'levelSelection' | 'leaderboard' | 'editorDifficulty' | 'login' | 'game' | 'editor' | 'settings';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -22,6 +22,10 @@ export default function App() {
 
   const handleNextLevel = () => {
     setSelectedLevel(prev => prev + 1);
+  };
+
+  const handleNavigate = (page: Page) => {
+    setCurrentPage(page);
   };
 
   const renderPage = () => {

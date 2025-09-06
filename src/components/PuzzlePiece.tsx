@@ -250,7 +250,7 @@ export function PuzzlePiece({
                         'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
             }}
             draggable={true}
-            onDragStart={handleDragStart}
+            onDragStart={(e: any) => handleDragStart(e)}
             onDragEnd={handleDragEnd}
             onClick={handleClick}
             onMouseEnter={() => setIsHovered(true)}

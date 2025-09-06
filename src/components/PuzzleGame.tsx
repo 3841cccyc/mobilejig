@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'motion/react';
 import { PuzzlePiece, rotateEdges } from './PuzzlePiece';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
 import { Card, CardContent } from './ui/card';
 import { RotateCcw, Undo2, RotateCw, X } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
@@ -104,6 +102,7 @@ export function PuzzleGame({
   const [score, setScore] = useState(0);
   const [moves, setMoves] = useState(0);
   const [startTime, setStartTime] = useState(Date.now());
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [moveHistory, setMoveHistory] = useState<MoveHistory[]>([]);
   
   // 使用设置上下文获取音效功能
@@ -125,12 +124,13 @@ export function PuzzleGame({
     }
   }, [imageUrl, gridSize]);
 
-    // Calculate dynamic sizing
-    const basePieceSize = 120;
-    const scaleFactor = Math.max(0.6, 1 - (gridSize - 3) * 0.15);
-    const pieceSize = Math.floor(basePieceSize * scaleFactor);
-    const gridCellSize = pieceSize; // Add padding for grid cells
-    const puzzleAreaSize = gridSize * gridCellSize;
+  // Calculate dynamic sizing
+  const basePieceSize = 120;
+  const scaleFactor = Math.max(0.6, 1 - (gridSize - 3) * 0.15);
+  const pieceSize = Math.floor(basePieceSize * scaleFactor);
+  const gridCellSize = pieceSize; // Add padding for grid cells
+  const puzzleAreaSize = gridSize * gridCellSize;
+
 
     // Check if two pieces can connect
     const canConnect = useCallback((piece1: GamePiece, piece2: GamePiece, direction: 'top' | 'right' | 'bottom' | 'left'): boolean => {
@@ -368,14 +368,15 @@ export function PuzzleGame({
             return canPlacePiece(p, p.currentGridPosition.row, p.currentGridPosition.col);
         });
 
-    if (allCorrectlyPlaced) {
-      const timeElapsed = Math.floor((Date.now() - startTime) / 1000);
-      const calculatedScore = calculateScore(moves + 1, timeElapsed, difficulty);
-      setScore(calculatedScore);
-      setGameCompleted(true);
-      onComplete?.(calculatedScore, moves + 1, timeElapsed);
-    }
-  }, [pieces, puzzleGrid, canPlacePiece, moves, startTime, difficulty, onComplete, playSfx]);
+        if (allCorrectlyPlaced) {
+            const timeElapsed = Math.floor((Date.now() - startTime) / 1000);
+            const calculatedScore = calculateScore(moves + 1, timeElapsed, difficulty);
+            setScore(calculatedScore);
+            setGameCompleted(true);
+            setShowCompletionDialog(true);
+            onComplete?.(calculatedScore, moves + 1, timeElapsed);
+        }
+    }, [pieces, puzzleGrid, canPlacePiece, moves, startTime, difficulty, onComplete, playSfx]);
 
     // Handle drag over grid cell
     const handleGridCellDragOver = useCallback((e: React.DragEvent) => {

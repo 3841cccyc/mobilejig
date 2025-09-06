@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Pause, Volume2, VolumeX } from 'lucide-react';
 import { Page } from '../App';
 import { PuzzleGame } from './PuzzleGame';
 import { getCurrentUser } from './regis'; // 导入获取当前用户的函数

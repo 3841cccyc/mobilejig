@@ -20,8 +20,8 @@ export default function App() {
   const [selectedLevel, setSelectedLevel] = useState<number>(1);
   const [editorDifficulty, setEditorDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
 
-  const handleNavigate = (page: Page) => {
-    setCurrentPage(page);
+  const handleNextLevel = () => {
+    setSelectedLevel(prev => prev + 1);
   };
 
   const renderPage = () => {
@@ -51,7 +51,7 @@ export default function App() {
       case 'editor':
         return <Editor onNavigate={setCurrentPage} difficulty={editorDifficulty} />;
       case 'game':
-            return <GamePage onNavigate={setCurrentPage} difficulty={selectedDifficulty} level={selectedLevel} />;
+            return <GamePage onNavigate={setCurrentPage} difficulty={selectedDifficulty} level={selectedLevel} onNextLevel={handleNextLevel} />;
       case 'login':
             return <AuthForm onNavigate={setCurrentPage} />;
       case 'settings': // 添加新页面的路由

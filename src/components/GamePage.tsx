@@ -2,17 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Input } from './ui/input';
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { Page } from '../App';
 import { PuzzleGame } from './PuzzleGame';
-import { levels } from './levels';
+import { getCurrentUser } from './regis'; // 导入获取当前用户的函数
+import { submitScore } from './Leaderboard'; // 导入提交分数的函数
+import { levels } from './levels'; // 导入关卡数据
 import { useSettings } from '../context/SettingsContext';
 
 interface GamePageProps {
     onNavigate: (page: Page) => void;
     difficulty: 'easy' | 'medium' | 'hard';
     level: number;
+    onNextLevel: () => void;
 }
 
 const difficultySettings = {
@@ -27,97 +29,51 @@ const difficultyConfig = {
       hard: { color: 'bg-red-500', name: '困难 (5x5)' }
 };
 
-// 获取排行榜数据
-const getLeaderboardData = () => {
-    const data = localStorage.getItem('puzzle-leaderboard');
-    return data ? JSON.parse(data) : [];
-};
-
-// 保存排行榜数据
-const saveLeaderboardData = (data) => {
-    localStorage.setItem('puzzle-leaderboard', JSON.stringify(data));
-};
-
-// 更新排行榜
-const updateLeaderboard = (playerName, score, difficulty, level = 1) => {
-    const leaderboardData = getLeaderboardData();
-    const existingPlayerIndex = leaderboardData.findIndex(
-        (player) => player.name.toLowerCase() === playerName.toLowerCase()
-    );
-
-    if (existingPlayerIndex !== -1) {
-        // 更新现有玩家分数
-        leaderboardData[existingPlayerIndex].score += score;
-        // 更新最高难度（如果当前难度更高）
-        const difficultyLevels = { easy: 1, medium: 2, hard: 3 };
-        if (difficultyLevels[difficulty] > difficultyLevels[leaderboardData[existingPlayerIndex].difficulty]) {
-            leaderboardData[existingPlayerIndex].difficulty = difficulty;
-        }
-        // 更新最高关卡（如果当前关卡更高）
-        if (level > leaderboardData[existingPlayerIndex].level) {
-            leaderboardData[existingPlayerIndex].level = level;
-        }
-    } else {
-        // 添加新玩家
-        leaderboardData.push({
-            rank: leaderboardData.length + 1,
-            name: playerName,
-            score: score,
-            difficulty: difficulty,
-            level: level
-        });
-    }
-
-    // 按分数排序
-    leaderboardData.sort((a, b) => b.score - a.score);
-
-    // 更新排名
-    leaderboardData.forEach((player, index) => {
-        player.rank = index + 1;
-    });
-
-    saveLeaderboardData(leaderboardData);
-    return leaderboardData;
-};
-
-export function GamePage({ onNavigate, difficulty, level }: GamePageProps) {
+export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePageProps) {
     const [timeLeft, setTimeLeft] = useState(difficultySettings[difficulty].timeLimit);
     const [isPaused, setIsPaused] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
     const [gameState, setGameState] = useState<'playing' | 'paused' | 'completed' | 'gameOver'>('playing');
     const [moves, setMoves] = useState(0);
     const [puzzleImageUrl, setPuzzleImageUrl] = useState<string>('');
-    const [playerName, setPlayerName] = useState('');
-    const [showNameDialog, setShowNameDialog] = useState(false);
+    const [showCompletionDialog, setShowCompletionDialog] = useState(false);
     const [finalScore, setFinalScore] = useState(0);
     const [completionTime, setCompletionTime] = useState(0);
+    const [currentUser, setCurrentUser] = useState(getCurrentUser());
+
+    const settings = difficultySettings[difficulty];
+    const config = difficultyConfig[difficulty];
     
     // 使用设置上下文
     const { isMusicOn, playBackgroundMusic, stopBackgroundMusic } = useSettings();
+    
+    // Check if there's a next level available
+    const hasNextLevel = level < levels[difficulty].length;
 
-      const settings = difficultySettings[difficulty];
-      const config = difficultyConfig[difficulty];
-
-    // Load puzzle image on mount
+    // 检查用户登录状态
     useEffect(() => {
-        const loadPuzzleImage = async () => {
-            try {
-                // Generate a random puzzle theme
-                const themes = [
-                    'beautiful landscape',
-                    'colorful flowers',
-                    'mountain scenery',
-                    'ocean waves',
-                    'forest nature',
-                    'sunset horizon',
-                    'peaceful garden',
-                    'wildlife animals'
-                ];
-                const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+        const user = getCurrentUser();
+        setCurrentUser(user);
 
-                // Use a placeholder for now - in real implementation, you would use unsplash_tool
-                const imageUrl = `https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=800&fit=crop&crop=center `;
-                setPuzzleImageUrl(imageUrl);
+        // 如果用户未登录，提示并返回主页
+        if (!user) {
+            alert('请先登录后再开始游戏');
+            onNavigate('home');
+        }
+    }, []);
+
+    // Load puzzle image based on selected level
+    useEffect(() => {
+        const loadPuzzleImage = () => {
+            try {
+                // Get the selected level from levels data
+                const levelData = levels[difficulty].find(l => l.id === level);
+                if (levelData && levelData.imageUrl) {
+                    setPuzzleImageUrl(levelData.imageUrl);
+                } else {
+                    // Fallback to first level if not found
+                    setPuzzleImageUrl(levels[difficulty][0].imageUrl);
+                }
             } catch (error) {
                 console.error('Failed to load puzzle image:', error);
                 // Use a solid color fallback
@@ -126,17 +82,16 @@ export function GamePage({ onNavigate, difficulty, level }: GamePageProps) {
         };
 
         loadPuzzleImage();
-    }, []);
-
+    }, [difficulty, level]);
+     
     // 背景音乐控制
-    useEffect(() => {
+     useEffect(() => {
         if (isMusicOn && gameState === 'playing' && !isPaused) {
             playBackgroundMusic();
         } else {
             stopBackgroundMusic();
         }
     }, [isMusicOn, gameState, isPaused, playBackgroundMusic, stopBackgroundMusic]);
-
       // Timer effect
       useEffect(() => {
             if (gameState === 'playing' && timeLeft !== null && timeLeft > 0) {
@@ -172,17 +127,13 @@ export function GamePage({ onNavigate, difficulty, level }: GamePageProps) {
             setFinalScore(score);
         setCompletionTime(timeElapsed);
         setGameState('completed');
-        setShowNameDialog(true);
-    };
 
+        // 使用当前用户信息自动提交分数
+        if (currentUser) {
+            const level = Math.max(1, Math.floor(score / 5000));
+            const entered = submitScore(currentUser.username, score, difficulty, level);
 
-
-    const handleNameSubmit = () => {
-        if (playerName.trim()) {
-            updateLeaderboard(playerName.trim(), finalScore, difficulty, level);
-            setShowNameDialog(false);
-            // 显示成功消息
-            alert(`分数已成功提交！您的得分：${finalScore}`);
+            setShowCompletionDialog(true);
         }
     };
 
@@ -191,6 +142,13 @@ export function GamePage({ onNavigate, difficulty, level }: GamePageProps) {
             onNavigate('home');
         } else if (page === 'difficulty') {
             onNavigate('difficulty');
+        }
+    };
+
+    const handleNextLevel = () => {
+        if (hasNextLevel) {
+            setShowCompletionDialog(false);
+            onNextLevel();
         }
     };
 
@@ -227,6 +185,11 @@ export function GamePage({ onNavigate, difficulty, level }: GamePageProps) {
                     <div className="text-sm">
                         步数: {moves}
                     </div>
+                    {currentUser && (
+                        <div className="text-sm text-muted-foreground">
+                            玩家: {currentUser.username}
+                        </div>
+                    )}
                 </div>
 
                 <div className="text-2xl font-mono text-primary">
@@ -293,35 +256,62 @@ export function GamePage({ onNavigate, difficulty, level }: GamePageProps) {
                 </DialogContent>
             </Dialog>
 
-            {/* Name Input Dialog */}
-            <Dialog open={showNameDialog} onOpenChange={setShowNameDialog}>
+            {/* Completion Dialog */}
+            <Dialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>恭喜完成游戏！</DialogTitle>
-                        <DialogDescription>
-                            请输入您的名称以保存分数到排行榜
-                        </DialogDescription>
+                        <DialogTitle>🎉 恭喜完成游戏！</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
-                        <p>您的得分: {finalScore}</p>
-                        <p>用时: {completionTime} 秒</p>
-                        <p>步数: {moves}</p>
-                        <Input
-                            placeholder="请输入您的名称"
-                            value={playerName}
-                            onChange={(e) => setPlayerName(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleNameSubmit()}
-                            autoFocus
-                        />
+                        {currentUser && (
+                            <p className="text-lg">
+                                恭喜 <span className="font-bold text-primary">{currentUser.username}</span> 获得
+                                <span className="font-bold text-primary"> {finalScore.toLocaleString()} </span>
+                                分！
+                            </p>
+                        )}
+                        <div className="space-y-2 text-sm">
+                            <p>用时: {completionTime} 秒</p>
+                            <p>步数: {moves}</p>
+                            <p>难度: {difficulty === 'easy' ? '简单' : difficulty === 'medium' ? '中等' : '困难'}</p>
+                        </div>
                     </div>
                     <DialogFooter>
-                        <Button
-                            onClick={handleNameSubmit}
-                            disabled={!playerName.trim()}
-                            className="w-full bg-primary hover:bg-primary/90"
-                        >
-                            提交分数
-                        </Button>
+                        <div className="flex flex-col gap-2 w-full">
+                            {hasNextLevel && (
+                                <Button
+                                    onClick={handleNextLevel}
+                                    className="w-full"
+                                    variant="outline"
+                                    size="lg"
+                                >
+                                    下一关 (第 {level + 1} 关)
+                                </Button>
+                            )}
+                            <div className="flex gap-2 w-full">
+                                <Button
+                                    onClick={() => window.location.reload()}
+                                    variant="outline"
+                                    className="flex-1"
+                                >
+                                    再玩一次
+                                </Button>
+                                <Button
+                                    onClick={() => onNavigate('leaderboard')}
+                                    variant="outline"
+                                    className="flex-1"
+                                >
+                                    查看排行榜
+                                </Button>
+                                <Button
+                                    onClick={() => onNavigate('home')}
+                                    variant="outline"
+                                    className="flex-1"
+                                >
+                                    返回主页
+                                </Button>
+                            </div>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

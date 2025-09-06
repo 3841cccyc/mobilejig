@@ -298,8 +298,8 @@ export function PuzzlePiece({
           d={piecePath}
           fill={imageUrl ? `url(#pattern-${id})` : `hsl(var(--primary) / 0.8)`}
           fillOpacity="1" // 添加这行
-          stroke={isSelected ? "hsl(var(--primary))" : "hsl(var(--border))"}
-          strokeWidth={isSelected ? "2.5" : "1.5"}
+          stroke={isSelected ? "hsl(var(--puzzle-border))" : "hsl(var(--puzzle-border) / 0.6)"}
+          strokeWidth={isSelected ? "3" : "2"}
           shapeRendering="crispEdges" // 添加这行
           filter={
             isSelected 

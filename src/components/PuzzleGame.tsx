@@ -6,6 +6,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Card, CardContent } from './ui/card';
 import { Sparkles, Trophy, Home, RotateCcw, Undo2, RotateCw, X } from 'lucide-react';
+import { useSettings } from '../context/SettingsContext';
 
 interface PuzzleEdge {
   type: 'flat' | 'tab' | 'blank';
@@ -106,6 +107,9 @@ export function PuzzleGame({
   const [startTime] = useState(Date.now());
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [moveHistory, setMoveHistory] = useState<MoveHistory[]>([]);
+  
+  // 使用设置上下文获取音效功能
+  const { playSfx } = useSettings();
 
   // Calculate dynamic sizing
   const basePieceSize = 120;
@@ -290,7 +294,9 @@ export function PuzzleGame({
   const handlePieceDragStart = useCallback((pieceId: number) => {
     setDraggedPiece(pieceId);
     setSelectedPiece(pieceId);
-  }, []);
+    // 播放拖动开始音效
+    playSfx('dragStart');
+  }, [playSfx]);
 
   // Handle drag end
   const handlePieceDragEnd = useCallback(() => {
@@ -329,6 +335,9 @@ export function PuzzleGame({
     setPieces(newPieces);
     setSelectedPiece(pieceId);
 
+    // 播放放置结束音效
+    playSfx('dragEnd');
+
     // Add to history
     setMoveHistory(prev => [...prev, {
       type: 'place',
@@ -353,7 +362,7 @@ export function PuzzleGame({
       setShowCompletionDialog(true);
       onComplete?.(calculatedScore, moves + 1, timeElapsed);
     }
-  }, [pieces, puzzleGrid, canPlacePiece, moves, startTime, difficulty, onComplete]);
+  }, [pieces, puzzleGrid, canPlacePiece, moves, startTime, difficulty, onComplete, playSfx]);
 
   // Handle drag over grid cell
   const handleGridCellDragOver = useCallback((e: React.DragEvent) => {

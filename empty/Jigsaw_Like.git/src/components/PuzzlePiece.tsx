@@ -308,7 +308,7 @@ export function PuzzlePiece({
       </svg>
       
       {/* Rotation button - only show on unplaced pieces when hovered */}
-      {!isPlaced && (
+      
         <motion.button
           onClick={handleRotate}
           className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs hover:bg-primary/90 transition-colors shadow-lg border border-primary-foreground/20"
@@ -325,7 +325,7 @@ export function PuzzlePiece({
         >
           ↺
         </motion.button>
-      )}
+      
 
       {/* Selection highlight */}
       {isSelected && (

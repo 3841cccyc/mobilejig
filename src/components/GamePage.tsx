@@ -6,23 +6,25 @@ import { Input } from './ui/input';
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { Page } from '../App';
 import { PuzzleGame } from './PuzzleGame';
+import { levels } from './levels';
 import { useSettings } from '../context/SettingsContext';
 
 interface GamePageProps {
     onNavigate: (page: Page) => void;
     difficulty: 'easy' | 'medium' | 'hard';
+    level: number;
 }
 
 const difficultySettings = {
-    easy: { timeLimit: null, pointMultiplier: 1, gridSize: 3 },
-    medium: { timeLimit: 300, pointMultiplier: 1.5, gridSize: 4 },
-    hard: { timeLimit: 180, pointMultiplier: 2, gridSize: 5 }
+      easy: { timeLimit: null, pointMultiplier: 1, gridSize: 3 },
+      medium: { timeLimit: 300, pointMultiplier: 1.5, gridSize: 4 },
+      hard: { timeLimit: 180, pointMultiplier: 2, gridSize: 5 }
 };
 
 const difficultyConfig = {
-    easy: { color: 'bg-green-500', name: '简单 (3x3)' },
-    medium: { color: 'bg-yellow-500', name: '中等 (4x4)' },
-    hard: { color: 'bg-red-500', name: '困难 (5x5)' }
+      easy: { color: 'bg-green-500', name: '简单 (3x3)' },
+      medium: { color: 'bg-yellow-500', name: '中等 (4x4)' },
+      hard: { color: 'bg-red-500', name: '困难 (5x5)' }
 };
 
 // 获取排行榜数据
@@ -78,7 +80,7 @@ const updateLeaderboard = (playerName, score, difficulty, level = 1) => {
     return leaderboardData;
 };
 
-export function GamePage({ onNavigate, difficulty }: GamePageProps) {
+export function GamePage({ onNavigate, difficulty, level }: GamePageProps) {
     const [timeLeft, setTimeLeft] = useState(difficultySettings[difficulty].timeLimit);
     const [isPaused, setIsPaused] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
@@ -93,8 +95,8 @@ export function GamePage({ onNavigate, difficulty }: GamePageProps) {
     // 使用设置上下文
     const { isMusicOn, playBackgroundMusic, stopBackgroundMusic } = useSettings();
 
-    const settings = difficultySettings[difficulty];
-    const config = difficultyConfig[difficulty];
+      const settings = difficultySettings[difficulty];
+      const config = difficultyConfig[difficulty];
 
     // Load puzzle image on mount
     useEffect(() => {
@@ -135,17 +137,17 @@ export function GamePage({ onNavigate, difficulty }: GamePageProps) {
         }
     }, [isMusicOn, gameState, isPaused, playBackgroundMusic, stopBackgroundMusic]);
 
-    // Timer effect
-    useEffect(() => {
-        if (gameState === 'playing' && timeLeft !== null && timeLeft > 0) {
-            const timer = setTimeout(() => {
-                setTimeLeft(prev => prev! - 1);
-            }, 1000);
-            return () => clearTimeout(timer);
-        } else if (timeLeft === 0) {
-            setGameState('gameOver');
-        }
-    }, [timeLeft, gameState]);
+      // Timer effect
+      useEffect(() => {
+            if (gameState === 'playing' && timeLeft !== null && timeLeft > 0) {
+                  const timer = setTimeout(() => {
+                        setTimeLeft(prev => prev! - 1);
+                  }, 1000);
+                  return () => clearTimeout(timer);
+            } else if (timeLeft === 0) {
+                  setGameState('gameOver');
+            }
+      }, [timeLeft, gameState]);
 
     const formatTime = (seconds: number | null) => {
         if (seconds === null) return '无时间限制';
@@ -163,17 +165,21 @@ export function GamePage({ onNavigate, difficulty }: GamePageProps) {
         setIsPaused(false);
     };
 
-    const handleGameComplete = (score: number, totalMoves: number, timeElapsed: number) => {
-        setMoves(totalMoves);
+      const handleGameComplete = (score: number, totalMoves: number, timeElapsed: number) => {
+            setMoves(totalMoves);
         setFinalScore(score);
+        setCompletionTime(timeElapsed);
+            setFinalScore(score);
         setCompletionTime(timeElapsed);
         setGameState('completed');
         setShowNameDialog(true);
     };
 
+
+
     const handleNameSubmit = () => {
         if (playerName.trim()) {
-            updateLeaderboard(playerName.trim(), finalScore, difficulty);
+            updateLeaderboard(playerName.trim(), finalScore, difficulty, level);
             setShowNameDialog(false);
             // 显示成功消息
             alert(`分数已成功提交！您的得分：${finalScore}`);

@@ -8,6 +8,7 @@ import { GamePage } from './components/GamePage';
 import { AuthForm } from './components/AuthForm';
 import { SettingsPage } from './components/SettingsPage'; // 引入新页面
 import { SettingsProvider } from './context/SettingsContext'; // 引入 Provider
+import { LevelSelection } from './components/LevelSelection';
 
 
 // 扩展 Page 类型
@@ -16,6 +17,7 @@ export type Page = 'home' | 'difficulty' | 'leaderboard' | 'editorDifficulty' | 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
+  const [selectedLevel, setSelectedLevel] = useState<number>(1);
   const [editorDifficulty, setEditorDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
 
   const handleNavigate = (page: Page) => {
@@ -34,6 +36,12 @@ export default function App() {
           onSelectDifficulty={setSelectedDifficulty}
           selectedDifficulty={selectedDifficulty}
         />;
+      case 'levelSelection':
+        return <LevelSelection
+          onNavigate={setCurrentPage}
+          onSelectLevel={setSelectedLevel}
+          difficulty={selectedDifficulty}
+        />;
       case 'editorDifficulty':
         return <EditorDifficultySelection 
           onNavigate={setCurrentPage}
@@ -43,7 +51,7 @@ export default function App() {
       case 'editor':
         return <Editor onNavigate={setCurrentPage} difficulty={editorDifficulty} />;
       case 'game':
-            return <GamePage onNavigate={setCurrentPage} difficulty={selectedDifficulty} />;
+            return <GamePage onNavigate={setCurrentPage} difficulty={selectedDifficulty} level={selectedLevel} />;
       case 'login':
             return <AuthForm onNavigate={setCurrentPage} />;
       case 'settings': // 添加新页面的路由

@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Upload, Play, Save, RotateCcw, Image as ImageIcon, Undo2, RotateCw, X } from 'lucide-react';
+import { useSettings } from '../context/SettingsContext';
 
 interface PuzzleEditorProps {
   gridSize: number;
@@ -87,6 +88,7 @@ export function PuzzleEditor({
   onTest, 
   initialImage 
 }: PuzzleEditorProps) {
+  const { isSfxOn } = useSettings(); // <-- 1. 获取音效设置
   const [pieces, setPieces] = useState<EditorPiece[]>(() => generateEditorPieces(gridSize));
   const [puzzleGrid, setPuzzleGrid] = useState<(EditorPiece | null)[][]>(() => {
     const grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
@@ -105,6 +107,10 @@ export function PuzzleEditor({
   const [puzzleImage, setPuzzleImage] = useState<string>(initialImage || '');
   const [editorMode, setEditorMode] = useState<'design' | 'test'>('design');
   const [moveHistory, setMoveHistory] = useState<MoveHistory[]>([]);
+
+  // 2. 准备音效文件 (请将音效文件放入 public/sounds 目录)
+  // const dragSound = useMemo(() => new Audio('/sounds/drag_start.mp3'), []);
+  // const dropSound = useMemo(() => new Audio('/sounds/drop_end.mp3'), []);
 
   // Calculate dynamic sizing
   const basePieceSize = 120;
@@ -212,9 +218,14 @@ export function PuzzleEditor({
 
   // Handle drag start
   const handlePieceDragStart = useCallback((pieceId: number) => {
+    if (isSfxOn) {
+      // dragSound.currentTime = 0;
+      // dragSound.play();
+      console.log("SFX: Drag Start"); // 播放拖拽开始音效
+    }
     setDraggedPiece(pieceId);
     setSelectedPiece(pieceId);
-  }, []);
+  }, [isSfxOn]);
 
   // Handle drag end
   const handlePieceDragEnd = useCallback(() => {
@@ -229,6 +240,13 @@ export function PuzzleEditor({
     const piece = pieces.find(p => p.id === pieceId);
     
     if (!piece) return;
+
+    // 播放放置音效
+    if (isSfxOn) {
+        // dropSound.currentTime = 0;
+        // dropSound.play();
+        console.log("SFX: Drop End");
+    }
 
     // Check if cell is occupied
     if (puzzleGrid[gridRow][gridCol]) return;
@@ -262,7 +280,7 @@ export function PuzzleEditor({
         to: { row: gridRow, col: gridCol }
       }]);
     }
-  }, [pieces, puzzleGrid, editorMode]);
+  }, [pieces, puzzleGrid, editorMode, isSfxOn]);
 
   // Handle drag over grid cell
   const handleGridCellDragOver = useCallback((e: React.DragEvent) => {

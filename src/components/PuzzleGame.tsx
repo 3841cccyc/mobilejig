@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import { PuzzlePiece, rotateEdges } from './PuzzlePiece';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
 import { Card, CardContent } from './ui/card';
-import { Sparkles, Trophy, Home, RotateCcw, Undo2, RotateCw, X } from 'lucide-react';
+import { RotateCcw, Undo2, RotateCw, X } from 'lucide-react';
+import { useSettings } from '../context/SettingsContext';
+
 
 interface PuzzleEdge {
     type: 'flat' | 'tab' | 'blank';
@@ -94,25 +94,44 @@ export function PuzzleGame({
     onNavigate,
     difficulty
 }: PuzzleGameProps) {
-    const [pieces, setPieces] = useState<GamePiece[]>(() => generatePuzzlePieces(gridSize));
-    const [puzzleGrid, setPuzzleGrid] = useState<(GamePiece | null)[][]>(() =>
-        Array(gridSize).fill(null).map(() => Array(gridSize).fill(null))
-    );
-    const [selectedPiece, setSelectedPiece] = useState<number | null>(null);
-    const [draggedPiece, setDraggedPiece] = useState<number | null>(null);
-    const [gameCompleted, setGameCompleted] = useState(false);
-    const [score, setScore] = useState(0);
-    const [moves, setMoves] = useState(0);
-    const [startTime] = useState(Date.now());
-    const [showCompletionDialog, setShowCompletionDialog] = useState(false);
-    const [moveHistory, setMoveHistory] = useState<MoveHistory[]>([]);
+  const [pieces, setPieces] = useState<GamePiece[]>(() => generatePuzzlePieces(gridSize));
+  const [puzzleGrid, setPuzzleGrid] = useState<(GamePiece | null)[][]>(() => 
+    Array(gridSize).fill(null).map(() => Array(gridSize).fill(null))
+  );
+  const [selectedPiece, setSelectedPiece] = useState<number | null>(null);
+  const [draggedPiece, setDraggedPiece] = useState<number | null>(null);
+  const [gameCompleted, setGameCompleted] = useState(false);
+  const [score, setScore] = useState(0);
+  const [moves, setMoves] = useState(0);
+  const [startTime, setStartTime] = useState(Date.now());
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+  const [moveHistory, setMoveHistory] = useState<MoveHistory[]>([]);
+  
+  // 使用设置上下文获取音效功能
+  const { playSfx } = useSettings();
 
-    // Calculate dynamic sizing
-    const basePieceSize = 120;
-    const scaleFactor = Math.max(0.6, 1 - (gridSize - 3) * 0.15);
-    const pieceSize = Math.floor(basePieceSize * scaleFactor);
-    const gridCellSize = pieceSize; // Add padding for grid cells
-    const puzzleAreaSize = gridSize * gridCellSize;
+  // Reset game when imageUrl changes (new level)
+  useEffect(() => {
+    if (imageUrl) {
+      const newPieces = generatePuzzlePieces(gridSize);
+      setPieces(newPieces);
+      setPuzzleGrid(Array(gridSize).fill(null).map(() => Array(gridSize).fill(null)));
+      setSelectedPiece(null);
+      setDraggedPiece(null);
+      setGameCompleted(false);
+      setScore(0);
+      setMoves(0);
+      setMoveHistory([]);
+      setStartTime(Date.now()); // Reset start time for new level
+    }
+  }, [imageUrl, gridSize]);
+
+  // Calculate dynamic sizing
+  const basePieceSize = 120;
+  const scaleFactor = Math.max(0.6, 1 - (gridSize - 3) * 0.15);
+  const pieceSize = Math.floor(basePieceSize * scaleFactor);
+  const gridCellSize = pieceSize; // Add padding for grid cells
+  const puzzleAreaSize = gridSize * gridCellSize;
 
     // Check if two pieces can connect
     const canConnect = useCallback((piece1: GamePiece, piece2: GamePiece, direction: 'top' | 'right' | 'bottom' | 'left'): boolean => {
@@ -286,11 +305,13 @@ export function PuzzleGame({
         setSelectedPiece(null);
     }, [selectedPiece, pieces, puzzleGrid]);
 
-    // Handle drag start
-    const handlePieceDragStart = useCallback((pieceId: number) => {
-        setDraggedPiece(pieceId);
-        setSelectedPiece(pieceId);
-    }, []);
+  // Handle drag start
+  const handlePieceDragStart = useCallback((pieceId: number) => {
+    setDraggedPiece(pieceId);
+    setSelectedPiece(pieceId);
+    // 播放拖动开始音效
+    playSfx('dragStart');
+  }, [playSfx]);
 
     // Handle drag end
     const handlePieceDragEnd = useCallback(() => {
@@ -315,19 +336,22 @@ export function PuzzleGame({
             newGrid[piece.currentGridPosition.row][piece.currentGridPosition.col] = null;
         }
 
-        // Place piece in new position
-        newGrid[gridRow][gridCol] = piece;
+    // Place piece in new position
+    newGrid[gridRow][gridCol] = piece;
+    
+    const oldPosition = piece.currentGridPosition;
+    const newPieces = pieces.map(p => 
+      p.id === pieceId 
+        ? { ...p, currentGridPosition: { row: gridRow, col: gridCol } }
+        : p
+    );
+    
+    setPuzzleGrid(newGrid);
+    setPieces(newPieces);
+    setSelectedPiece(pieceId);
 
-        const oldPosition = piece.currentGridPosition;
-        const newPieces = pieces.map(p =>
-            p.id === pieceId
-                ? { ...p, currentGridPosition: { row: gridRow, col: gridCol } }
-                : p
-        );
-
-        setPuzzleGrid(newGrid);
-        setPieces(newPieces);
-        setSelectedPiece(pieceId);
+    // 播放放置结束音效
+    playSfx('dragEnd');
 
         // Add to history
         setMoveHistory(prev => [...prev, {
@@ -353,7 +377,7 @@ export function PuzzleGame({
             setShowCompletionDialog(true);
             onComplete?.(calculatedScore, moves + 1, timeElapsed);
         }
-    }, [pieces, puzzleGrid, canPlacePiece, moves, startTime, difficulty, onComplete]);
+    }, [pieces, puzzleGrid, canPlacePiece, moves, startTime, difficulty, onComplete, playSfx]);
 
     // Handle drag over grid cell
     const handleGridCellDragOver = useCallback((e: React.DragEvent) => {
@@ -440,19 +464,19 @@ export function PuzzleGame({
         return Math.floor((baseScore + timeBonus + moveBonus) * difficultyMultiplier);
     }
 
-    // Reset game
-    const handleReset = useCallback(() => {
-        const newPieces = generatePuzzlePieces(gridSize);
-        setPieces(newPieces);
-        setPuzzleGrid(Array(gridSize).fill(null).map(() => Array(gridSize).fill(null)));
-        setSelectedPiece(null);
-        setDraggedPiece(null);
-        setGameCompleted(false);
-        setScore(0);
-        setMoves(0);
-        setMoveHistory([]);
-        setShowCompletionDialog(false);
-    }, [gridSize]);
+  // Reset game
+  const handleReset = useCallback(() => {
+    const newPieces = generatePuzzlePieces(gridSize);
+    setPieces(newPieces);
+    setPuzzleGrid(Array(gridSize).fill(null).map(() => Array(gridSize).fill(null)));
+    setSelectedPiece(null);
+    setDraggedPiece(null);
+    setGameCompleted(false);
+    setScore(0);
+    setMoves(0);
+    setMoveHistory([]);
+    setStartTime(Date.now()); // Reset start time
+  }, [gridSize]);
 
     // Get pieces not placed on grid
     const unplacedPieces = pieces.filter(piece => !piece.currentGridPosition);
@@ -650,116 +674,6 @@ export function PuzzleGame({
                     </CardContent>
                 </Card>
             </div>
-
-            {/* Completion Dialog */}
-            <AnimatePresence>
-                {showCompletionDialog && (
-                    <Dialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
-                        <DialogContent className="sm:max-w-md">
-                            <motion.div
-                                initial={{ scale: 0.8, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                exit={{ scale: 0.8, opacity: 0 }}
-                                transition={{ duration: 0.3 }}
-                            >
-                                <DialogHeader>
-                                    <DialogTitle className="flex items-center gap-2 text-2xl">
-                                        <motion.div
-                                            animate={{
-                                                rotate: [0, 360],
-                                                scale: [1, 1.2, 1]
-                                            }}
-                                            transition={{
-                                                duration: 2,
-                                                repeat: Infinity,
-                                                ease: "easeInOut"
-                                            }}
-                                        >
-                                            <Trophy className="size-8 text-yellow-500" />
-                                        </motion.div>
-                                        🎉 拼图完成！
-                                    </DialogTitle>
-                                </DialogHeader>
-
-                                <div className="space-y-6 text-center">
-                                    {/* Animated sparkles */}
-                                    <div className="relative">
-                                        {[...Array(6)].map((_, i) => (
-                                            <motion.div
-                                                key={i}
-                                                className="absolute"
-                                                style={{
-                                                    left: `${20 + i * 15}%`,
-                                                    top: `${10 + (i % 2) * 20}%`
-                                                }}
-                                                animate={{
-                                                    scale: [0, 1, 0],
-                                                    rotate: [0, 180, 360],
-                                                    opacity: [0, 1, 0]
-                                                }}
-                                                transition={{
-                                                    duration: 2,
-                                                    repeat: Infinity,
-                                                    delay: i * 0.2,
-                                                    ease: "easeInOut"
-                                                }}
-                                            >
-                                                <Sparkles className="size-4 text-yellow-400" />
-                                            </motion.div>
-                                        ))}
-
-                                        <div className="py-8">
-                                            <motion.div
-                                                initial={{ scale: 0 }}
-                                                animate={{ scale: 1 }}
-                                                transition={{ delay: 0.5, duration: 0.5, type: "spring" }}
-                                                className="text-4xl font-mono text-primary"
-                                            >
-                                                {score.toLocaleString()}
-                                            </motion.div>
-                                            <p className="text-sm text-muted-foreground">最终分数</p>
-                                            <div className="flex justify-center gap-4 mt-4 text-xs">
-                                                <Badge variant="outline">
-                                                    {moves} 步完成
-                                                </Badge>
-                                                <Badge variant="outline">
-                                                    {Math.floor((Date.now() - startTime) / 1000)} 秒
-                                                </Badge>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <div className="flex gap-2">
-                                            <Button
-                                                onClick={handleReset}
-                                                className="flex-1 bg-primary hover:bg-primary/90"
-                                            >
-                                                再玩一次
-                                            </Button>
-                                            <Button
-                                                onClick={() => onNavigate?.('difficulty')}
-                                                variant="outline"
-                                                className="flex-1"
-                                            >
-                                                更改难度
-                                            </Button>
-                                        </div>
-                                        <Button
-                                            onClick={() => onNavigate?.('home')}
-                                            variant="ghost"
-                                            className="w-full"
-                                        >
-                                            <Home className="size-4 mr-2" />
-                                            返回主页
-                                        </Button>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        </DialogContent>
-                    </Dialog>
-                )}
-            </AnimatePresence>
         </div>
     );
 }

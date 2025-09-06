@@ -140,27 +140,27 @@ export function Homepage({ onNavigate }: HomepageProps) {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-card/90 backdrop-blur-sm hover:bg-card/95 transition-all duration-300 cursor-pointer group">
-                        <CardHeader className="text-center">
-                            <div className="mx-auto bg-primary rounded-full p-4 mb-4 group-hover:scale-110 transition-transform">
-                                <Settings className="size-8 text-primary-foreground" />
-                            </div>
-                            <CardTitle>设置</CardTitle>
-                            <CardDescription>
-                                配置游戏偏好和选项
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Button
-                                variant="outline"
-                                className="w-full"
-                                onClick={() => checkLoginAndNavigate('home')}
-                            >
-                                设置
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </div>
+          <Card className="bg-card/90 backdrop-blur-sm hover:bg-card/95 transition-all duration-300 cursor-pointer group" style={{ backgroundColor: 'hsl(var(--card-bg) / 0.9)' }}>
+            <CardHeader className="text-center">
+              <div className="mx-auto bg-primary rounded-full p-4 mb-4 group-hover:scale-110 transition-transform">
+                <Settings className="size-8 text-primary-foreground" />
+              </div>
+              <CardTitle style={{ color: 'hsl(var(--text-primary))' }}>主题设置</CardTitle>
+              <CardDescription style={{ color: 'hsl(var(--text-muted))' }}>
+                配置游戏主题、音乐和音效
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => onNavigate('settings')}
+              >
+                主题设置
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
 
                 {/* Game Stats and Login Button */}
                 <div className="mt-12 text-center">

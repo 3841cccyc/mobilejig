@@ -6,10 +6,13 @@ import { EditorDifficultySelection } from './components/EditorDifficultySelectio
 import { Editor } from './components/Editor';
 import { GamePage } from './components/GamePage';
 import { AuthForm } from './components/AuthForm';
+import { SettingsPage } from './components/SettingsPage'; // 引入新页面
+import { SettingsProvider } from './context/SettingsContext'; // 引入 Provider
 import { LevelSelection } from './components/LevelSelection';
 
 
-export type Page = 'home' | 'leaderboard' | 'difficulty' | 'editorDifficulty' | 'editor' | 'game' | 'login' | 'levelSelection';
+// 扩展 Page 类型
+export type Page = 'home' | 'difficulty' | 'levelSelection' | 'leaderboard' | 'editorDifficulty' | 'login' | 'game' | 'editor' | 'settings';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -21,12 +24,16 @@ export default function App() {
     setSelectedLevel(prev => prev + 1);
   };
 
+  const handleNavigate = (page: Page) => {
+    setCurrentPage(page);
+  };
+
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <Homepage onNavigate={setCurrentPage} />;
+        return <Homepage onNavigate={handleNavigate} />;
       case 'leaderboard':
-        return <Leaderboard onNavigate={setCurrentPage} />;
+        return <Leaderboard onNavigate={handleNavigate} />;
       case 'difficulty':
         return <DifficultySelection 
           onNavigate={setCurrentPage} 
@@ -51,14 +58,20 @@ export default function App() {
             return <GamePage onNavigate={setCurrentPage} difficulty={selectedDifficulty} level={selectedLevel} onNextLevel={handleNextLevel} />;
       case 'login':
             return <AuthForm onNavigate={setCurrentPage} />;
+      case 'settings': // 添加新页面的路由
+        return <SettingsPage onNavigate={handleNavigate} />;
       default:
-        return <Homepage onNavigate={setCurrentPage} />;
+        return <Homepage onNavigate={handleNavigate} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary to-secondary">
-      {renderPage()}
-    </div>
+    <SettingsProvider> {/* 用 Provider 包裹整个应用 */}
+      <div className="min-h-screen" style={{
+        background: `linear-gradient(135deg, hsl(var(--gradient-from)), hsl(var(--gradient-to)))`
+      }}>
+        {renderPage()}
+      </div>
+    </SettingsProvider>
   );
 }

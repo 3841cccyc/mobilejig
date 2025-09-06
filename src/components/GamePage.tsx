@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Pause, Volume2, VolumeX } from 'lucide-react';
 import { Page } from '../App';
 import { PuzzleGame } from './PuzzleGame';
 import { getCurrentUser } from './regis'; // 导入获取当前用户的函数
 import { submitScore } from './Leaderboard'; // 导入提交分数的函数
 import { levels } from './levels'; // 导入关卡数据
+import { useSettings } from '../context/SettingsContext';
 
 interface GamePageProps {
     onNavigate: (page: Page) => void;
@@ -17,15 +18,15 @@ interface GamePageProps {
 }
 
 const difficultySettings = {
-    easy: { timeLimit: null, pointMultiplier: 1, gridSize: 3 },
-    medium: { timeLimit: 300, pointMultiplier: 1.5, gridSize: 4 },
-    hard: { timeLimit: 180, pointMultiplier: 2, gridSize: 5 }
+      easy: { timeLimit: null, pointMultiplier: 1, gridSize: 3 },
+      medium: { timeLimit: 300, pointMultiplier: 1.5, gridSize: 4 },
+      hard: { timeLimit: 180, pointMultiplier: 2, gridSize: 5 }
 };
 
 const difficultyConfig = {
-    easy: { color: 'bg-green-500', name: '简单 (3x3)' },
-    medium: { color: 'bg-yellow-500', name: '中等 (4x4)' },
-    hard: { color: 'bg-red-500', name: '困难 (5x5)' }
+      easy: { color: 'bg-green-500', name: '简单 (3x3)' },
+      medium: { color: 'bg-yellow-500', name: '中等 (4x4)' },
+      hard: { color: 'bg-red-500', name: '困难 (5x5)' }
 };
 
 export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePageProps) {
@@ -42,6 +43,9 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
 
     const settings = difficultySettings[difficulty];
     const config = difficultyConfig[difficulty];
+    
+    // 使用设置上下文
+    const { isMusicOn, playBackgroundMusic, stopBackgroundMusic } = useSettings();
     
     // Check if there's a next level available
     const hasNextLevel = level < levels[difficulty].length;
@@ -79,18 +83,26 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
 
         loadPuzzleImage();
     }, [difficulty, level]);
-
-    // Timer effect
-    useEffect(() => {
-        if (gameState === 'playing' && timeLeft !== null && timeLeft > 0) {
-            const timer = setTimeout(() => {
-                setTimeLeft(prev => prev! - 1);
-            }, 1000);
-            return () => clearTimeout(timer);
-        } else if (timeLeft === 0) {
-            setGameState('gameOver');
+     
+    // 背景音乐控制
+     useEffect(() => {
+        if (isMusicOn && gameState === 'playing' && !isPaused) {
+            playBackgroundMusic();
+        } else {
+            stopBackgroundMusic();
         }
-    }, [timeLeft, gameState]);
+    }, [isMusicOn, gameState, isPaused, playBackgroundMusic, stopBackgroundMusic]);
+      // Timer effect
+      useEffect(() => {
+            if (gameState === 'playing' && timeLeft !== null && timeLeft > 0) {
+                  const timer = setTimeout(() => {
+                        setTimeLeft(prev => prev! - 1);
+                  }, 1000);
+                  return () => clearTimeout(timer);
+            } else if (timeLeft === 0) {
+                  setGameState('gameOver');
+            }
+      }, [timeLeft, gameState]);
 
     const formatTime = (seconds: number | null) => {
         if (seconds === null) return '无时间限制';
@@ -108,9 +120,11 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
         setIsPaused(false);
     };
 
-    const handleGameComplete = (score: number, totalMoves: number, timeElapsed: number) => {
-        setMoves(totalMoves);
+      const handleGameComplete = (score: number, totalMoves: number, timeElapsed: number) => {
+            setMoves(totalMoves);
         setFinalScore(score);
+        setCompletionTime(timeElapsed);
+            setFinalScore(score);
         setCompletionTime(timeElapsed);
         setGameState('completed');
 

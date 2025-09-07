@@ -222,6 +222,9 @@ export function PuzzlePiece({
     const fallbackPieceSize = Math.floor(basePieceSize * scaleFactor);
     // 使用传入的 cellSize（优先），否则用原来的 fallback
     const pieceSize = typeof cellSize === 'number' ? cellSize : fallbackPieceSize;
+    
+    // 确保拼图块大小与网格单元格大小完全匹配
+    const actualPieceSize = pieceSize;
 
     // Generate piece path with original edges (no rotation applied to path)
     const piecePath = generatePiecePath(edges, pieceSize);
@@ -230,19 +233,19 @@ export function PuzzlePiece({
     const normalizedRotation = ((rotation % 360) + 360) % 360;
 
     // Calculate tab extensions
-    const tabRadius = pieceSize * 0.15;
+    const tabRadius = actualPieceSize * 0.15;
     const viewBoxOffset = tabRadius;
-    const extendedViewBoxSize = pieceSize + (tabRadius * 2);
+    const extendedViewBoxSize = actualPieceSize + (tabRadius * 2);
 
     return (
         <motion.div
             ref={dragRef}
             className={`absolute cursor-pointer select-none group ${className}`}
             style={{
-                width: cellSize,
-                height: cellSize,
-                top: '-15%', // 修改为0%
-                left: '-13%', // 修改为0%
+                width: actualPieceSize,
+                height: actualPieceSize,
+                top: '0%',
+                left: '0%',
                 transform: `translate(-50%, -50%) rotate(${normalizedRotation}deg)`,
                 overflow: 'visible',
                 filter: isDragging ? 'drop-shadow(0 8px 16px rgba(0,0,0,0.3))' :

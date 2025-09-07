@@ -34,6 +34,9 @@ interface MoveHistory {
 
 interface PuzzleGameProps {
     gridSize: number;
+    rows?: number;
+    cols?: number;
+    pieceShape?: 'regular' | 'irregular';
     imageUrl?: string;
     onComplete?: (score: number, moves: number, timeElapsed: number) => void;
     onNavigate?: (page: 'home' | 'difficulty' | 'editorDifficulty') => void;
@@ -46,39 +49,54 @@ interface PuzzleGameProps {
     isLoadingSavedGame: boolean;
     timeLeft: number | null;
     setTimeLeft: (time: number | null) => void;
+    isPreviewMode?: boolean;
 }
 
 // Generate puzzle pieces with jigsaw edges
-function generatePuzzlePieces(gridSize: number): GamePiece[] {
+function generatePuzzlePieces(rows: number, cols: number, pieceShape: 'regular' | 'irregular' = 'irregular'): GamePiece[] {
     const pieces: GamePiece[] = [];
 
-    for (let row = 0; row < gridSize; row++) {
-        for (let col = 0; col < gridSize; col++) {
-            const id = row * gridSize + col;
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            const id = row * cols + col;
 
-            // Determine edges based on position and random generation
-            const edges = {
-                top: row === 0 ? { type: 'flat' as const } :
-                    Math.random() > 0.5 ? { type: 'tab' as const } : { type: 'blank' as const },
-                right: col === gridSize - 1 ? { type: 'flat' as const } :
-                    Math.random() > 0.5 ? { type: 'tab' as const } : { type: 'blank' as const },
-                bottom: row === gridSize - 1 ? { type: 'flat' as const } :
-                    Math.random() > 0.5 ? { type: 'tab' as const } : { type: 'blank' as const },
-                left: col === 0 ? { type: 'flat' as const } :
-                    Math.random() > 0.5 ? { type: 'tab' as const } : { type: 'blank' as const }
-            };
-
-            // Ensure adjacent pieces have matching edges
-            if (row > 0) {
-                const topPiece = pieces[(row - 1) * gridSize + col];
-                edges.top = topPiece.originalEdges.bottom.type === 'tab' ?
-                    { type: 'blank' } : { type: 'tab' };
+            // Determine edges based on piece shape
+            let edges;
+            if (pieceShape === 'regular') {
+                // 规则形状：所有边缘都是平的
+                edges = {
+                    top: { type: 'flat' as const },
+                    right: { type: 'flat' as const },
+                    bottom: { type: 'flat' as const },
+                    left: { type: 'flat' as const }
+                };
+            } else {
+                // 不规则形状：基于位置和随机生成
+                edges = {
+                    top: row === 0 ? { type: 'flat' as const } :
+                        Math.random() > 0.5 ? { type: 'tab' as const } : { type: 'blank' as const },
+                    right: col === cols - 1 ? { type: 'flat' as const } :
+                        Math.random() > 0.5 ? { type: 'tab' as const } : { type: 'blank' as const },
+                    bottom: row === rows - 1 ? { type: 'flat' as const } :
+                        Math.random() > 0.5 ? { type: 'tab' as const } : { type: 'blank' as const },
+                    left: col === 0 ? { type: 'flat' as const } :
+                        Math.random() > 0.5 ? { type: 'tab' as const } : { type: 'blank' as const }
+                };
             }
 
-            if (col > 0) {
-                const leftPiece = pieces[row * gridSize + (col - 1)];
-                edges.left = leftPiece.originalEdges.right.type === 'tab' ?
-                    { type: 'blank' } : { type: 'tab' };
+            // Ensure adjacent pieces have matching edges (only for irregular shapes)
+            if (pieceShape === 'irregular') {
+                if (row > 0) {
+                    const topPiece = pieces[(row - 1) * cols + col];
+                    edges.top = topPiece.originalEdges.bottom.type === 'tab' ?
+                        { type: 'blank' } : { type: 'tab' };
+                }
+
+                if (col > 0) {
+                    const leftPiece = pieces[row * cols + (col - 1)];
+                    edges.left = leftPiece.originalEdges.right.type === 'tab' ?
+                        { type: 'blank' } : { type: 'tab' };
+                }
             }
 
             pieces.push({
@@ -95,6 +113,9 @@ function generatePuzzlePieces(gridSize: number): GamePiece[] {
 
 const PuzzleGame = forwardRef(({
     gridSize,
+    rows,
+    cols,
+    pieceShape = 'irregular',
     imageUrl,
     onComplete,
     onNavigate,
@@ -106,11 +127,20 @@ const PuzzleGame = forwardRef(({
     onDeleteSavedGame,
     isLoadingSavedGame,
     timeLeft,
-    setTimeLeft
+    setTimeLeft,
+    isPreviewMode = false
 }: PuzzleGameProps, ref) => {
-    const [pieces, setPieces] = useState<GamePiece[]>(() => generatePuzzlePieces(gridSize));
+    // 使用传入的rows和cols，如果没有则使用gridSize作为正方形
+    const actualRows = rows || gridSize;
+    const actualCols = cols || gridSize;
+    
+    // 确保actualRows和actualCols是有效的数字
+    const safeRows = Math.max(1, actualRows || gridSize);
+    const safeCols = Math.max(1, actualCols || gridSize);
+    
+    const [pieces, setPieces] = useState<GamePiece[]>(() => generatePuzzlePieces(safeRows, safeCols, pieceShape));
     const [puzzleGrid, setPuzzleGrid] = useState<(GamePiece | null)[][]>(() =>
-        Array(gridSize).fill(null).map(() => Array(gridSize).fill(null))
+        Array(safeRows).fill(null).map(() => Array(safeCols).fill(null))
     );
     const [selectedPiece, setSelectedPiece] = useState<number | null>(null);
     const [draggedPiece, setDraggedPiece] = useState<number | null>(null);
@@ -147,9 +177,9 @@ const PuzzleGame = forwardRef(({
                 setTimeLeft(savedGame.timeLeft);
             } else {
                 // 开始新游戏
-                const newPieces = generatePuzzlePieces(gridSize);
+                const newPieces = generatePuzzlePieces(safeRows, safeCols, pieceShape);
                 setPieces(newPieces);
-                setPuzzleGrid(Array(gridSize).fill(null).map(() => Array(gridSize).fill(null)));
+                setPuzzleGrid(Array(safeRows).fill(null).map(() => Array(safeCols).fill(null)));
                 setSelectedPiece(null);
                 setDraggedPiece(null);
                 setGameCompleted(false);
@@ -159,10 +189,12 @@ const PuzzleGame = forwardRef(({
                 setStartTime(Date.now()); // Reset start time for new level
             }
         }
-    }, [imageUrl, gridSize, onLoadGame, isLoadingSavedGame, setTimeLeft]);
+    }, [imageUrl, safeRows, safeCols, onLoadGame, isLoadingSavedGame, setTimeLeft]);
 
-    // 保存游戏进度
+    // 保存游戏进度（预览模式下禁用）
     useEffect(() => {
+        if (isPreviewMode) return; // 预览模式下不保存游戏进度
+        
         const handleSaveGame = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
@@ -172,9 +204,11 @@ const PuzzleGame = forwardRef(({
 
         window.addEventListener('keydown', handleSaveGame);
         return () => window.removeEventListener('keydown', handleSaveGame);
-    }, []);
+    }, [isPreviewMode]);
 
     const handleSaveGameProgress = useCallback(() => {
+        if (isPreviewMode) return; // 预览模式下不保存游戏进度
+        
         const gameData = {
             pieces,
             puzzleGrid,
@@ -184,16 +218,18 @@ const PuzzleGame = forwardRef(({
 
         const success = onSaveGame(gameData);
         if (success) {
-            playSfx('success');
+            playSfx('dragEnd');
         }
-    }, [pieces, puzzleGrid, moves, moveHistory, onSaveGame, playSfx]);
+    }, [pieces, puzzleGrid, moves, moveHistory, onSaveGame, playSfx, isPreviewMode]);
 
     // Calculate dynamic sizing
-    const basePieceSize = 120;
-    const scaleFactor = Math.max(0.6, 1 - (gridSize - 3) * 0.15);
-    const pieceSize = Math.floor(basePieceSize * scaleFactor);
-    const gridCellSize = pieceSize; // Add padding for grid cells
-    const puzzleAreaSize = gridSize * gridCellSize;
+    const maxDimension = Math.max(safeRows, safeCols);
+    
+    // 计算拼图区域的总大小（基于最大维度的动态大小）
+    const baseAreaSize = 400; // 基础区域大小
+    const totalPuzzleArea = Math.min(baseAreaSize, baseAreaSize * (maxDimension / 4)); // 根据网格大小调整
+    const gridCellSize = Math.floor(totalPuzzleArea / maxDimension);
+    const puzzleAreaSize = totalPuzzleArea;
 
     // Check if two pieces can connect
     const canConnect = useCallback((piece1: GamePiece, piece2: GamePiece, direction: 'top' | 'right' | 'bottom' | 'left'): boolean => {
@@ -222,7 +258,7 @@ const PuzzleGame = forwardRef(({
     }, []);
 
     // Get rotated position based on rotation angle
-    function getRotatedPosition(originalPos: { row: number; col: number }, rotation: number, gridSize: number) {
+    function getRotatedPosition(originalPos: { row: number; col: number }, rotation: number, rows: number, cols: number) {
         const normalizedRotation = ((rotation % 360) + 360) % 360;
         const { row, col } = originalPos;
 
@@ -230,11 +266,11 @@ const PuzzleGame = forwardRef(({
             case 0:
                 return { row, col };
             case 90:
-                return { row: col, col: gridSize - 1 - row };
+                return { row: col, col: rows - 1 - row };
             case 180:
-                return { row: gridSize - 1 - row, col: gridSize - 1 - col };
+                return { row: rows - 1 - row, col: cols - 1 - col };
             case 270:
-                return { row: gridSize - 1 - col, col: row };
+                return { row: cols - 1 - col, col: row };
             default:
                 return { row, col };
         }
@@ -243,7 +279,7 @@ const PuzzleGame = forwardRef(({
     // Check if piece can be placed at grid position
     const canPlacePiece = useCallback((piece: GamePiece, gridRow: number, gridCol: number): boolean => {
         // Check if position matches piece's correct position with current rotation
-        const rotatedPosition = getRotatedPosition(piece.position, piece.rotation, gridSize);
+        const rotatedPosition = getRotatedPosition(piece.position, piece.rotation, safeRows, safeCols);
         if (rotatedPosition.row !== gridRow || rotatedPosition.col !== gridCol) {
             return false;
         }
@@ -260,8 +296,8 @@ const PuzzleGame = forwardRef(({
             const adjacentRow = gridRow + dRow;
             const adjacentCol = gridCol + dCol;
 
-            if (adjacentRow >= 0 && adjacentRow < gridSize &&
-                adjacentCol >= 0 && adjacentCol < gridSize) {
+            if (adjacentRow >= 0 && adjacentRow < safeRows &&
+                adjacentCol >= 0 && adjacentCol < safeCols) {
                 const adjacentPiece = puzzleGrid[adjacentRow][adjacentCol];
 
                 if (adjacentPiece && !canConnect(piece, adjacentPiece, direction)) {
@@ -271,7 +307,7 @@ const PuzzleGame = forwardRef(({
         }
 
         return true;
-    }, [puzzleGrid, gridSize, canConnect]);
+    }, [puzzleGrid, safeRows, safeCols, canConnect]);
 
     // Handle piece click (selection)
     const handlePieceClick = useCallback((pieceId: number) => {
@@ -521,16 +557,16 @@ const PuzzleGame = forwardRef(({
         const baseScore = 1000;
         const difficultyMultiplier = { easy: 1, medium: 1.5, hard: 2 }[difficulty];
         const timeBonus = Math.max(0, 300 - timeElapsed);
-        const moveBonus = Math.max(0, (gridSize * gridSize * 2 - moves) * 10);
+        const moveBonus = Math.max(0, (safeRows * safeCols * 2 - moves) * 10);
 
         return Math.floor((baseScore + timeBonus + moveBonus) * difficultyMultiplier);
     }
 
     // Reset game
     const handleReset = useCallback(() => {
-        const newPieces = generatePuzzlePieces(gridSize);
+        const newPieces = generatePuzzlePieces(safeRows, safeCols, pieceShape);
         setPieces(newPieces);
-        setPuzzleGrid(Array(gridSize).fill(null).map(() => Array(gridSize).fill(null)));
+        setPuzzleGrid(Array(safeRows).fill(null).map(() => Array(safeCols).fill(null)));
         setSelectedPiece(null);
         setDraggedPiece(null);
         setGameCompleted(false);
@@ -541,7 +577,7 @@ const PuzzleGame = forwardRef(({
 
         // 删除保存的游戏进度
         onDeleteSavedGame();
-    }, [gridSize, onDeleteSavedGame]);
+    }, [safeRows, safeCols, onDeleteSavedGame]);
 
     // Get pieces not placed on grid
     const unplacedPieces = pieces.filter(piece => !piece.currentGridPosition);
@@ -555,17 +591,17 @@ const PuzzleGame = forwardRef(({
                     {/* Puzzle Grid */}
                     <div className="bg-card/95 backdrop-blur-sm rounded-lg p-6 shadow-xl">
                         <div
-                            className={`grid gap-0 ${gridSize === 3 ? 'grid-cols-3' :
-                                gridSize === 4 ? 'grid-cols-4' : 'grid-cols-5'
-                                }`}
+                            className={`grid gap-0`}
                             style={{
-                                width: `${puzzleAreaSize}px`,
-                                height: `${puzzleAreaSize}px`
+                                width: `${safeCols * gridCellSize}px`,
+                                height: `${safeRows * gridCellSize}px`,
+                                gridTemplateColumns: `repeat(${safeCols}, ${gridCellSize}px)`,
+                                gridTemplateRows: `repeat(${safeRows}, ${gridCellSize}px)`
                             }}
                         >
-                            {Array.from({ length: gridSize * gridSize }).map((_, index) => {
-                                const row = Math.floor(index / gridSize);
-                                const col = index % gridSize;
+                            {Array.from({ length: safeRows * safeCols }).map((_, index) => {
+                                const row = Math.floor(index / safeCols);
+                                const col = index % safeCols;
                                 const piece = puzzleGrid[row][col];
                                 const isCorrectPlacement = piece ? canPlacePiece(piece, row, col) : false;
                                 const isSelected = piece && selectedPiece === piece.id;
@@ -586,7 +622,7 @@ const PuzzleGame = forwardRef(({
                                             <PuzzlePiece
                                                 id={piece.id}
                                                 position={piece.position}
-                                                gridSize={gridSize}
+                                                gridSize={Math.max(safeRows, safeCols)}
                                                 rotation={piece.rotation}
                                                 imageUrl={imageUrl}
                                                 isPlaced={true}
@@ -690,7 +726,7 @@ const PuzzleGame = forwardRef(({
                         <div
                             className="grid gap-4 overflow-y-auto flex-1 p-8" // 添加了p-4内边距
                             style={{
-                                gridTemplateColumns: `repeat(auto-fit, minmax(${Math.max(80, pieceSize * 0.8)}px, 1fr))`, // 使用auto-fit和minmax
+                                gridTemplateColumns: `repeat(auto-fit, minmax(${Math.max(80, gridCellSize * 0.8)}px, 1fr))`, // 使用auto-fit和minmax
                                 gridAutoRows: 'min-content'
                             }}
                         >
@@ -699,15 +735,15 @@ const PuzzleGame = forwardRef(({
                                     key={piece.id}
                                     className="relative flex items-center justify-center mx-auto" // 添加mx-auto居中
                                     style={{
-                                        width: `${pieceSize}px`, // 明确设置宽度
-                                        height: `${pieceSize}px`, // 明确设置高度
+                                        width: `${gridCellSize}px`, // 明确设置宽度
+                                        height: `${gridCellSize}px`, // 明确设置高度
                                         overflow: 'visible'
                                     }}
                                 >
                                     <PuzzlePiece
                                         id={piece.id}
                                         position={piece.position}
-                                        gridSize={gridSize}
+                                        gridSize={Math.max(safeRows, safeCols)}
                                         rotation={piece.rotation}
                                         imageUrl={imageUrl}
                                         isPlaced={false}
@@ -718,7 +754,7 @@ const PuzzleGame = forwardRef(({
                                         edges={piece.originalEdges}
                                         isSelected={selectedPiece === piece.id}
                                         isDragging={draggedPiece === piece.id}
-                                        cellSize={pieceSize * 0.8} // 缩小待选区域的拼图块
+                                        cellSize={gridCellSize * 0.8} // 缩小待选区域的拼图块
                                     />
                                 </div>
                             ))}

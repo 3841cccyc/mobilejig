@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { ArrowLeft, PlayCircle, Lock, Clock } from 'lucide-react';
+import { ArrowLeft, PlayCircle, Lock, Clock, Trash2 } from 'lucide-react';
 import { Page } from '../App';
 import { levels } from './levels';
 import { getCurrentUser } from './regis';
@@ -8,18 +9,48 @@ import { getCurrentUser } from './regis';
 interface LevelSelectionProps {
     onNavigate: (page: Page) => void;
     onSelectLevel: (level: number | string) => void;
+    onPlayLevel?: (levelId: number | string) => void;
     difficulty: 'easy' | 'medium' | 'hard' | 'custom';
 }
 
-export function LevelSelection({ onNavigate, onSelectLevel, difficulty }: LevelSelectionProps) {
-    const difficultyLevels = difficulty === 'custom' ? 
-        (JSON.parse(localStorage.getItem('customLevels') || '[]')) : 
-        levels[difficulty];
+export function LevelSelection({ onNavigate, onSelectLevel, onPlayLevel, difficulty }: LevelSelectionProps) {
+    const [customLevels, setCustomLevels] = useState<any[]>([]);
+    const [refreshKey, setRefreshKey] = useState(0);
+    
+    const difficultyLevels = difficulty === 'custom' ? customLevels : levels[difficulty];
     const currentUser = getCurrentUser();
 
+    // 加载自定义关卡
+    useEffect(() => {
+        if (difficulty === 'custom') {
+            const levels = JSON.parse(localStorage.getItem('customLevels') || '[]');
+            setCustomLevels(levels);
+        }
+    }, [difficulty, refreshKey]);
+
     const handleLevelSelect = (levelId: number | string) => {
-        onSelectLevel(levelId);
-        onNavigate('game');
+        if (onPlayLevel) {
+            // 使用专门的游玩函数
+            onPlayLevel(levelId);
+        } else {
+            // 备用方案
+            onSelectLevel(levelId);
+            onNavigate('game');
+        }
+    };
+
+    const handleDeleteCustomLevel = (levelId: string, event: React.MouseEvent) => {
+        event.stopPropagation(); // 阻止触发卡片的点击事件
+        
+        if (confirm('确定要删除这个自定义关卡吗？此操作无法撤销。')) {
+            const currentLevels = JSON.parse(localStorage.getItem('customLevels') || '[]');
+            const updatedLevels = currentLevels.filter((level: any) => level.id !== levelId);
+            localStorage.setItem('customLevels', JSON.stringify(updatedLevels));
+            
+            // 更新状态以重新渲染组件
+            setCustomLevels(updatedLevels);
+            setRefreshKey(prev => prev + 1);
+        }
     };
 
     // 检查关卡是否有保存的进度
@@ -108,6 +139,16 @@ export function LevelSelection({ onNavigate, onSelectLevel, difficulty }: LevelS
                                                 <Clock className="size-3 mr-1" />
                                                 有进度
                                             </div>
+                                        )}
+                                        {difficulty === 'custom' && (
+                                            <Button
+                                                onClick={(e: React.MouseEvent) => handleDeleteCustomLevel(level.id, e)}
+                                                size="sm"
+                                                variant="destructive"
+                                                className="absolute top-2 left-2 h-8 w-8 p-0"
+                                            >
+                                                <Trash2 className="size-4" />
+                                            </Button>
                                         )}
                                     </div>
                                     <CardHeader>

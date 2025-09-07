@@ -1,22 +1,13 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Switch } from './ui/switch';
-import { ArrowLeft, Upload, Save, Play, Settings, Grid3X3 } from 'lucide-react';
+import { ArrowLeft, Upload, Play, Settings, Grid3X3 } from 'lucide-react';
 import { Page } from '../App';
 
-interface CustomLevel {
-  id: string;
-  name: string;
-  imageUrl: string;
-  rows: number;
-  cols: number;
-  pieceShape: 'regular' | 'irregular';
-  createdAt: Date;
-}
 
 interface PuzzleEditorProps {
   onNavigate: (page: Page) => void;
@@ -33,6 +24,11 @@ export function PuzzleEditor({ onNavigate }: PuzzleEditorProps) {
   const [imageUrl, setImageUrl] = useState('');
   const [previewImage, setPreviewImage] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 组件初始化时清除任何临时预览数据
+  useEffect(() => {
+    localStorage.removeItem('tempPreviewLevel');
+  }, []);
 
   // 处理图片上传
   const handleImageUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,36 +55,6 @@ export function PuzzleEditor({ onNavigate }: PuzzleEditorProps) {
     }
   };
 
-  // 保存自定义关卡
-  const handleSaveLevel = () => {
-    if (!levelConfig.name.trim()) {
-      alert('请输入关卡名称');
-      return;
-    }
-    
-    if (!imageUrl) {
-      alert('请上传或输入图片');
-      return;
-    }
-
-    const newLevel: CustomLevel = {
-      id: `custom_${Date.now()}`,
-      name: levelConfig.name,
-      imageUrl: imageUrl,
-      rows: levelConfig.rows,
-      cols: levelConfig.cols,
-      pieceShape: levelConfig.pieceShape,
-      createdAt: new Date()
-    };
-
-    // 保存到localStorage
-    const existingLevels = JSON.parse(localStorage.getItem('customLevels') || '[]');
-    existingLevels.push(newLevel);
-    localStorage.setItem('customLevels', JSON.stringify(existingLevels));
-
-    alert('自定义关卡创建成功！');
-    onNavigate('home');
-  };
 
   // 预览关卡
   const handlePreviewLevel = () => {
@@ -97,9 +63,24 @@ export function PuzzleEditor({ onNavigate }: PuzzleEditorProps) {
       return;
     }
     
-    // 这里可以跳转到预览页面或游戏页面
-    alert('预览功能开发中...');
+    // 创建临时关卡数据进行预览
+    const tempLevel = {
+      id: `preview_${Date.now()}`,
+      name: levelConfig.name,
+      imageUrl: imageUrl,
+      rows: levelConfig.rows,
+      cols: levelConfig.cols,
+      pieceShape: levelConfig.pieceShape,
+      createdAt: new Date()
+    };
+
+    // 保存临时关卡到localStorage用于预览
+    localStorage.setItem('tempPreviewLevel', JSON.stringify(tempLevel));
+    
+    // 跳转到游戏页面进行预览
+    onNavigate('game');
   };
+
 
   const renderConfigStep = () => (
     <div className="space-y-6">
@@ -315,11 +296,7 @@ export function PuzzleEditor({ onNavigate }: PuzzleEditorProps) {
         <div className="space-x-2">
           <Button variant="outline" onClick={handlePreviewLevel}>
             <Play className="size-4 mr-2" />
-            预览
-          </Button>
-          <Button onClick={handleSaveLevel}>
-            <Save className="size-4 mr-2" />
-            保存关卡
+            预览关卡
           </Button>
         </div>
       </div>
@@ -361,6 +338,7 @@ export function PuzzleEditor({ onNavigate }: PuzzleEditorProps) {
             {currentStep === 'preview' && renderPreviewStep()}
           </CardContent>
         </Card>
+
       </div>
     </div>
   );

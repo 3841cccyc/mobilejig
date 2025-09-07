@@ -15,6 +15,7 @@ interface GamePageProps {
     difficulty: 'easy' | 'medium' | 'hard' | 'custom';
     level: number | string;
     onNextLevel: () => void;
+    isPreviewMode?: boolean;
 }
 
 const difficultySettings = {
@@ -44,7 +45,7 @@ interface GameSaveData {
     timestamp: number;
 }
 
-export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePageProps) {
+export function GamePage({ onNavigate, difficulty, level, onNextLevel, isPreviewMode = false }: GamePageProps) {
     const [timeLeft, setTimeLeft] = useState(difficultySettings[difficulty].timeLimit);
     const [isPaused, setIsPaused] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
@@ -58,10 +59,17 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
     const [showLoadDialog, setShowLoadDialog] = useState(false);
     const [hasSavedGame, setHasSavedGame] = useState(false);
     const [isLoadingSavedGame, setIsLoadingSavedGame] = useState(false);
+    const [customLevelData, setCustomLevelData] = useState<any>(null);
 
     const puzzleGameRef = useRef<any>(null);
 
-    const settings = difficultySettings[difficulty];
+    // 动态计算设置
+    const settings = difficulty === 'custom' && customLevelData ? {
+        timeLimit: null,
+        pointMultiplier: 1.5,
+        gridSize: Math.max(customLevelData.rows, customLevelData.cols)
+    } : difficultySettings[difficulty];
+    
     const config = difficultyConfig[difficulty];
 
     // 使用设置上下文
@@ -105,13 +113,32 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
         const loadPuzzleImage = () => {
             try {
                 if (difficulty === 'custom') {
-                    // For custom difficulty, get the level data from localStorage
-                    const customLevels = JSON.parse(localStorage.getItem('customLevels') || '[]');
-                    const customLevel = customLevels.find((l: any) => l.id === level);
-                    if (customLevel && customLevel.imageUrl) {
-                        setPuzzleImageUrl(customLevel.imageUrl);
+                    let customLevel = null;
+                    
+                    if (isPreviewMode) {
+                        // 预览模式：从临时数据获取
+                        const tempPreviewLevel = localStorage.getItem('tempPreviewLevel');
+                        if (tempPreviewLevel) {
+                            customLevel = JSON.parse(tempPreviewLevel);
+                        }
                     } else {
-                        setPuzzleImageUrl('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=800&fit=crop&crop=center');
+                        // 正常模式：从自定义关卡列表获取
+                        const customLevels = JSON.parse(localStorage.getItem('customLevels') || '[]');
+                        customLevel = customLevels.find((l: any) => l.id === level);
+                    }
+                    
+                    if (customLevel) {
+                        setCustomLevelData(customLevel);
+                        if (customLevel.imageUrl) {
+                            setPuzzleImageUrl(customLevel.imageUrl);
+                        } else {
+                            setPuzzleImageUrl('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=800&fit=crop&crop=center');
+                        }
+                    } else {
+                        console.error('Custom level not found:', level);
+                        // 如果找不到自定义关卡，返回难度选择页面
+                        onNavigate('difficulty');
+                        return;
                     }
                 } else {
                     // Get the selected level from levels data
@@ -298,11 +325,67 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
 
     return (
         <div className="min-h-screen flex flex-col">
+            {/* Preview Mode Banner */}
+            {isPreviewMode && (
+                <div className="bg-yellow-500 text-white py-2 px-4">
+                    <div className="flex items-center justify-between max-w-4xl mx-auto">
+                        <span className="font-medium">预览模式</span> - 您正在预览自定义关卡
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={() => {
+                                    // 保存关卡
+                                    const tempPreviewLevel = localStorage.getItem('tempPreviewLevel');
+                                    if (tempPreviewLevel) {
+                                        const previewData = JSON.parse(tempPreviewLevel);
+                                        const newLevel = {
+                                            id: `custom_${Date.now()}`,
+                                            name: previewData.name,
+                                            imageUrl: previewData.imageUrl,
+                                            rows: previewData.rows,
+                                            cols: previewData.cols,
+                                            pieceShape: previewData.pieceShape,
+                                            createdAt: new Date()
+                                        };
+                                        
+                                        const customLevels = JSON.parse(localStorage.getItem('customLevels') || '[]');
+                                        customLevels.push(newLevel);
+                                        localStorage.setItem('customLevels', JSON.stringify(customLevels));
+                                        
+                                        // 清除临时预览数据
+                                        localStorage.removeItem('tempPreviewLevel');
+                                        
+                                        // 显示成功消息并返回编辑器
+                                        alert('关卡保存成功！');
+                                        onNavigate('puzzleEditor');
+                                    }
+                                }}
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                                <Save className="size-4 mr-1" />
+                                保存关卡
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    localStorage.removeItem('tempPreviewLevel');
+                                    onNavigate('puzzleEditor');
+                                }}
+                                size="sm"
+                                variant="outline"
+                                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                            >
+                                返回编辑器
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
             {/* Timer and Top Controls */}
             <div className="flex justify-between items-center p-4 bg-card/90 backdrop-blur-sm">
                 <div className="flex items-center gap-4">
                     <Badge className={`${config.color} text-white`}>
-                        {config.name}
+                        {isPreviewMode ? '预览模式' : config.name}
                     </Badge>
                     <div className="text-sm">
                         步数: {moves}
@@ -339,22 +422,35 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
             </div>
 
             {/* Main Game Area */}
-            <PuzzleGame
-                ref={puzzleGameRef}
-                gridSize={settings.gridSize}
-                imageUrl={puzzleImageUrl}
-                onComplete={handleGameComplete}
-                onNavigate={handleNavigate}
-                difficulty={difficulty as 'easy' | 'medium' | 'hard'}
-                level={level}
-                hasSavedGame={hasSavedGame}
-                onSaveGame={saveGameProgress}
-                onLoadGame={loadGameProgress}
-                onDeleteSavedGame={deleteSavedGame}
-                isLoadingSavedGame={isLoadingSavedGame}
-                timeLeft={timeLeft}
-                setTimeLeft={setTimeLeft}
-            />
+            {(!puzzleImageUrl || (difficulty === 'custom' && !customLevelData)) ? (
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                        <p className="text-muted-foreground">加载中...</p>
+                    </div>
+                </div>
+            ) : (
+                <PuzzleGame
+                    ref={puzzleGameRef}
+                    gridSize={settings.gridSize}
+                    rows={difficulty === 'custom' && customLevelData ? customLevelData.rows : undefined}
+                    cols={difficulty === 'custom' && customLevelData ? customLevelData.cols : undefined}
+                    pieceShape={difficulty === 'custom' && customLevelData ? customLevelData.pieceShape : 'irregular'}
+                    imageUrl={puzzleImageUrl}
+                    onComplete={handleGameComplete}
+                    onNavigate={handleNavigate}
+                    difficulty={difficulty as 'easy' | 'medium' | 'hard'}
+                    level={level}
+                    hasSavedGame={hasSavedGame}
+                    onSaveGame={saveGameProgress}
+                    onLoadGame={loadGameProgress}
+                    onDeleteSavedGame={deleteSavedGame}
+                    isLoadingSavedGame={isLoadingSavedGame}
+                    timeLeft={timeLeft}
+                    setTimeLeft={setTimeLeft}
+                    isPreviewMode={isPreviewMode}
+                />
+            )}
 
             {/* Pause Menu Dialog */}
             <Dialog open={isPaused} onOpenChange={setIsPaused}>
@@ -363,28 +459,45 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
                         <DialogTitle>游戏暂停</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
-                        <Button
-                            onClick={() => handlePauseMenuAction('save')}
-                            variant="outline"
-                            className="w-full"
-                        >
-                            <Save className="size-4 mr-2" />
-                            保存当前进度
-                        </Button>
-                        <Button
-                            onClick={() => handlePauseMenuAction('home')}
-                            variant="outline"
-                            className="w-full"
-                        >
-                            返回主页
-                        </Button>
-                        <Button
-                            onClick={() => handlePauseMenuAction('difficulty')}
-                            variant="outline"
-                            className="w-full"
-                        >
-                            返回难度选择
-                        </Button>
+                        {!isPreviewMode && (
+                            <Button
+                                onClick={() => handlePauseMenuAction('save')}
+                                variant="outline"
+                                className="w-full"
+                            >
+                                <Save className="size-4 mr-2" />
+                                保存当前进度
+                            </Button>
+                        )}
+                        {isPreviewMode ? (
+                            <Button
+                                onClick={() => {
+                                    localStorage.removeItem('tempPreviewLevel');
+                                    onNavigate('puzzleEditor');
+                                }}
+                                variant="outline"
+                                className="w-full"
+                            >
+                                返回编辑器
+                            </Button>
+                        ) : (
+                            <>
+                                <Button
+                                    onClick={() => handlePauseMenuAction('home')}
+                                    variant="outline"
+                                    className="w-full"
+                                >
+                                    返回主页
+                                </Button>
+                                <Button
+                                    onClick={() => handlePauseMenuAction('difficulty')}
+                                    variant="outline"
+                                    className="w-full"
+                                >
+                                    返回难度选择
+                                </Button>
+                            </>
+                        )}
                         <Button
                             onClick={() => setIsPaused(false)}
                             className="w-full bg-primary hover:bg-primary/90"
@@ -456,29 +569,41 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
                                     下一关 (第 {typeof level === 'number' ? level + 1 : level} 关)
                                 </Button>
                             )}
-                            <div className="flex gap-2 w-full">
+                            {isPreviewMode ? (
                                 <Button
-                                    onClick={() => window.location.reload()}
-                                    variant="outline"
-                                    className="flex-1"
+                                    onClick={() => {
+                                        localStorage.removeItem('tempPreviewLevel');
+                                        onNavigate('puzzleEditor');
+                                    }}
+                                    className="w-full"
                                 >
-                                    再玩一次
+                                    返回编辑器
                                 </Button>
-                                <Button
-                                    onClick={() => onNavigate('leaderboard')}
-                                    variant="outline"
-                                    className="flex-1"
-                                >
-                                    查看排行榜
-                                </Button>
-                                <Button
-                                    onClick={() => onNavigate('home')}
-                                    variant="outline"
-                                    className="flex-1"
-                                >
-                                    返回主页
-                                </Button>
-                            </div>
+                            ) : (
+                                <div className="flex gap-2 w-full">
+                                    <Button
+                                        onClick={() => window.location.reload()}
+                                        variant="outline"
+                                        className="flex-1"
+                                    >
+                                        再玩一次
+                                    </Button>
+                                    <Button
+                                        onClick={() => onNavigate('leaderboard')}
+                                        variant="outline"
+                                        className="flex-1"
+                                    >
+                                        查看排行榜
+                                    </Button>
+                                    <Button
+                                        onClick={() => onNavigate('home')}
+                                        variant="outline"
+                                        className="flex-1"
+                                    >
+                                        返回主页
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </DialogFooter>
                 </DialogContent>

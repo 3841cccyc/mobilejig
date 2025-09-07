@@ -244,8 +244,8 @@ export function PuzzlePiece({
             style={{
                 width: actualPieceSize,
                 height: actualPieceSize,
-                top: '0%',
-                left: '0%',
+                top: '-15%',
+                left: '-13%',
                 transform: `translate(-50%, -50%) rotate(${normalizedRotation}deg)`,
                 overflow: 'visible',
                 filter: isDragging ? 'drop-shadow(0 8px 16px rgba(0,0,0,0.3))' :

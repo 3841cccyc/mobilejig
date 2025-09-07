@@ -241,8 +241,8 @@ export function PuzzlePiece({
             style={{
                 width: cellSize,
                 height: cellSize,
-                top: '0%', // 修改为0%
-                left: '0%', // 修改为0%
+                top: '-15%', // 修改为0%
+                left: '-13%', // 修改为0%
                 transform: `translate(-50%, -50%) rotate(${normalizedRotation}deg)`,
                 overflow: 'visible',
                 filter: isDragging ? 'drop-shadow(0 8px 16px rgba(0,0,0,0.3))' :

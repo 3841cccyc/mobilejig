@@ -553,12 +553,7 @@ const PuzzleGame = forwardRef(({
             <div className="flex-1 flex items-center justify-center p-6">
                 <div className="relative">
                     {/* Puzzle Grid */}
-                    <div
-                        className="bg-card/95 backdrop-blur-sm rounded-lg shadow-xl"
-                        style={{
-                            padding: '24px 55px 55px 24px' // 上、右、下、左：6=24px, 10=40px
-                        }}
-                    >
+                    <div className="bg-card/95 backdrop-blur-sm rounded-lg p-6 shadow-xl">
                         <div
                             className={`grid gap-0 ${gridSize === 3 ? 'grid-cols-3' :
                                 gridSize === 4 ? 'grid-cols-4' : 'grid-cols-5'
@@ -693,7 +688,7 @@ const PuzzleGame = forwardRef(({
                     <CardContent className="p-4 h-full flex flex-col">
                         <h3 className="font-medium mb-4 flex-shrink-0">拼图块存储 (剩余 {unplacedPieces.length} 块)</h3>
                         <div
-                            className="grid gap-4 overflow-y-auto flex-1 p-4" // 添加了p-4内边距
+                            className="grid gap-4 overflow-y-auto flex-1 p-8" // 添加了p-4内边距
                             style={{
                                 gridTemplateColumns: `repeat(auto-fit, minmax(${Math.max(80, pieceSize * 0.8)}px, 1fr))`, // 使用auto-fit和minmax
                                 gridAutoRows: 'min-content'

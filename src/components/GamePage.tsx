@@ -142,7 +142,7 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel, isPreview
                     }
                 } else {
                     // Get the selected level from levels data
-                    const levelData = levels[difficulty].find((l: any) => l.id === level);
+                    const levelData = levels[difficulty].find((l: any) => l.id === parseInt(level.toString()));
                     if (levelData && levelData.imageUrl) {
                         setPuzzleImageUrl(levelData.imageUrl);
                     } else {
@@ -422,7 +422,7 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel, isPreview
             </div>
 
             {/* Main Game Area */}
-            {(!puzzleImageUrl || (difficulty === 'custom' && !customLevelData)) ? (
+            {!puzzleImageUrl ? (
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
@@ -439,7 +439,7 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel, isPreview
                     imageUrl={puzzleImageUrl}
                     onComplete={handleGameComplete}
                     onNavigate={handleNavigate}
-                    difficulty={difficulty as 'easy' | 'medium' | 'hard'}
+                    difficulty={difficulty}
                     level={level}
                     hasSavedGame={hasSavedGame}
                     onSaveGame={saveGameProgress}

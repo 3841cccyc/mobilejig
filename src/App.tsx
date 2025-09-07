@@ -59,7 +59,7 @@ export default function App() {
   // 通用的游玩关卡函数
   const handlePlayLevel = (levelId: number | string) => {
     setIsPreviewMode(false);
-    setSelectedDifficulty('custom'); // 确保设置为自定义难度
+    // 保持当前选择的难度，不强制设置为custom
     setSelectedLevel(levelId.toString()); // 直接设置selectedLevel，避免异步问题
     setCurrentPage('game');
   };

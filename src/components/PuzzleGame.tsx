@@ -40,7 +40,7 @@ interface PuzzleGameProps {
     imageUrl?: string;
     onComplete?: (score: number, moves: number, timeElapsed: number) => void;
     onNavigate?: (page: 'home' | 'difficulty' | 'editorDifficulty') => void;
-    difficulty: 'easy' | 'medium' | 'hard';
+    difficulty: 'easy' | 'medium' | 'hard' | 'custom';
     level: number | string;
     hasSavedGame: boolean;
     onSaveGame: (gameData: any) => boolean;
@@ -553,9 +553,9 @@ const PuzzleGame = forwardRef(({
     }, [moveHistory, puzzleGrid, pieces]);
 
     // Calculate score based on performance
-    function calculateScore(moves: number, timeElapsed: number, difficulty: 'easy' | 'medium' | 'hard'): number {
+    function calculateScore(moves: number, timeElapsed: number, difficulty: 'easy' | 'medium' | 'hard' | 'custom'): number {
         const baseScore = 1000;
-        const difficultyMultiplier = { easy: 1, medium: 1.5, hard: 2 }[difficulty];
+        const difficultyMultiplier = { easy: 1, medium: 1.5, hard: 2, custom: 1.5 }[difficulty];
         const timeBonus = Math.max(0, 300 - timeElapsed);
         const moveBonus = Math.max(0, (safeRows * safeCols * 2 - moves) * 10);
 

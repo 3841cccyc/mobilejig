@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { ArrowLeft, PlayCircle, Lock, Clock, Trash2 } from 'lucide-react';
+import { ArrowLeft, PlayCircle, Lock, Clock, Trash2, Settings } from 'lucide-react';
 import { Page } from '../App';
 import { levels } from './levels';
 import { getCurrentUser } from './regis';
@@ -16,8 +16,8 @@ interface LevelSelectionProps {
 export function LevelSelection({ onNavigate, onSelectLevel, onPlayLevel, difficulty }: LevelSelectionProps) {
     const [customLevels, setCustomLevels] = useState<any[]>([]);
     const [refreshKey, setRefreshKey] = useState(0);
+    const [isManageMode, setIsManageMode] = useState(false);
     
-    const difficultyLevels = difficulty === 'custom' ? customLevels : levels[difficulty];
     const currentUser = getCurrentUser();
 
     // 加载自定义关卡

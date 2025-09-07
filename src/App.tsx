@@ -2,31 +2,30 @@ import React, { useState } from 'react';
 import { Homepage } from './components/Homepage';
 import { Leaderboard } from './components/Leaderboard';
 import { DifficultySelection } from './components/DifficultySelection';
-import { EditorDifficultySelection } from './components/EditorDifficultySelection';
-import { Editor } from './components/Editor';
 import { GamePage } from './components/GamePage';
 import { AuthForm } from './components/AuthForm';
 import { SettingsPage } from './components/SettingsPage'; // 引入新页面
 import { SettingsProvider } from './context/SettingsContext'; // 引入 Provider
 import { LevelSelection } from './components/LevelSelection';
+import { PuzzleEditor } from './components/PuzzleEditor';
 
 
 // 扩展 Page 类型
-export type Page = 'home' | 'difficulty' | 'levelSelection' | 'leaderboard' | 'editorDifficulty' | 'login' | 'game' | 'editor' | 'settings';
+export type Page = 'home' | 'difficulty' | 'levelSelection' | 'leaderboard' | 'login' | 'game' | 'settings' | 'puzzleEditor';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
-  const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
-  const [selectedLevel, setSelectedLevel] = useState<number>(1);
-  const [editorDifficulty, setEditorDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard' | 'custom'>('easy');
+  const [selectedLevel, setSelectedLevel] = useState<number | string>(1);
 
   const handleNextLevel = () => {
-    setSelectedLevel(prev => prev + 1);
+    setSelectedLevel(prev => typeof prev === 'number' ? prev + 1 : prev);
   };
 
   const handleNavigate = (page: Page) => {
     setCurrentPage(page);
   };
+
 
   const renderPage = () => {
     switch (currentPage) {
@@ -46,14 +45,8 @@ export default function App() {
           onSelectLevel={setSelectedLevel}
           difficulty={selectedDifficulty}
         />;
-      case 'editorDifficulty':
-        return <EditorDifficultySelection 
-          onNavigate={setCurrentPage}
-          onSelectDifficulty={setEditorDifficulty}
-          selectedDifficulty={editorDifficulty}
-        />;
-      case 'editor':
-        return <Editor onNavigate={setCurrentPage} difficulty={editorDifficulty} />;
+      case 'puzzleEditor':
+        return <PuzzleEditor onNavigate={setCurrentPage} />;
       case 'game':
             return <GamePage onNavigate={setCurrentPage} difficulty={selectedDifficulty} level={selectedLevel} onNextLevel={handleNextLevel} />;
       case 'login':

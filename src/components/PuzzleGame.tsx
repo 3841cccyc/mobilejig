@@ -38,7 +38,7 @@ interface PuzzleGameProps {
     onComplete?: (score: number, moves: number, timeElapsed: number) => void;
     onNavigate?: (page: 'home' | 'difficulty' | 'editorDifficulty') => void;
     difficulty: 'easy' | 'medium' | 'hard';
-    level: number;
+    level: number | string;
     hasSavedGame: boolean;
     onSaveGame: (gameData: any) => boolean;
     onLoadGame: () => any;

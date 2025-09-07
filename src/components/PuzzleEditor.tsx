@@ -1,684 +1,364 @@
-import React, { useState, useCallback } from 'react';
-import { motion } from 'motion/react';
-import { PuzzlePiece, rotateEdges } from './PuzzlePiece';
+import React, { useState, useRef, useCallback } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Upload, Play, Save, RotateCcw, Image as ImageIcon, Undo2, RotateCw, X } from 'lucide-react';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Switch } from './ui/switch';
+import { ArrowLeft, Upload, Save, Play, Settings, Grid3X3 } from 'lucide-react';
+import { Page } from '../App';
+
+interface CustomLevel {
+  id: string;
+  name: string;
+  imageUrl: string;
+  rows: number;
+  cols: number;
+  pieceShape: 'regular' | 'irregular';
+  createdAt: Date;
+}
 
 interface PuzzleEditorProps {
-  gridSize: number;
-  onSave?: (puzzleData: any) => void;
-  onTest?: (puzzleData: any) => void;
-  initialImage?: string;
+  onNavigate: (page: Page) => void;
 }
 
-interface EditorPiece {
-  id: number;
-  position: { row: number; col: number };
-  rotation: number;
-  originalEdges: {
-    top: { type: 'flat' | 'tab' | 'blank' };
-    right: { type: 'flat' | 'tab' | 'blank' };
-    bottom: { type: 'flat' | 'tab' | 'blank' };
-    left: { type: 'flat' | 'tab' | 'blank' };
-  };
-  currentGridPosition?: { row: number; col: number };
-}
-
-interface MoveHistory {
-  type: 'place' | 'remove' | 'rotate';
-  pieceId: number;
-  from?: { row: number; col: number };
-  to?: { row: number; col: number };
-  oldRotation?: number;
-  newRotation?: number;
-}
-
-// Generate editable puzzle pieces
-function generateEditorPieces(gridSize: number): EditorPiece[] {
-  const pieces: EditorPiece[] = [];
-  
-  for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-      const id = row * gridSize + col;
-      
-      // Generate default edges
-      const edges = {
-        top: row === 0 ? { type: 'flat' as const } : 
-             Math.random() > 0.5 ? { type: 'tab' as const } : { type: 'blank' as const },
-        right: col === gridSize - 1 ? { type: 'flat' as const } : 
-               Math.random() > 0.5 ? { type: 'tab' as const } : { type: 'blank' as const },
-        bottom: row === gridSize - 1 ? { type: 'flat' as const } : 
-                Math.random() > 0.5 ? { type: 'tab' as const } : { type: 'blank' as const },
-        left: col === 0 ? { type: 'flat' as const } : 
-              Math.random() > 0.5 ? { type: 'tab' as const } : { type: 'blank' as const }
-      };
-      
-      // Ensure adjacent pieces have matching edges
-      if (row > 0) {
-        const topPiece = pieces[(row - 1) * gridSize + col];
-        edges.top = topPiece.originalEdges.bottom.type === 'tab' ? 
-                   { type: 'blank' } : { type: 'tab' };
-      }
-      
-      if (col > 0) {
-        const leftPiece = pieces[row * gridSize + (col - 1)];
-        edges.left = leftPiece.originalEdges.right.type === 'tab' ? 
-                    { type: 'blank' } : { type: 'tab' };
-      }
-      
-      pieces.push({
-        id,
-        position: { row, col },
-        rotation: 0,
-        originalEdges: edges,
-        currentGridPosition: { row, col }
-      });
-    }
-  }
-  
-  return pieces;
-}
-
-export function PuzzleEditor({ 
-  gridSize, 
-  onSave, 
-  onTest, 
-  initialImage 
-}: PuzzleEditorProps) {
-  const [pieces, setPieces] = useState<EditorPiece[]>(() => generateEditorPieces(gridSize));
-  const [puzzleGrid, setPuzzleGrid] = useState<(EditorPiece | null)[][]>(() => {
-    const grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
-    const initialPieces = generateEditorPieces(gridSize);
-    
-    initialPieces.forEach(piece => {
-      if (piece.currentGridPosition) {
-        grid[piece.currentGridPosition.row][piece.currentGridPosition.col] = piece;
-      }
-    });
-    
-    return grid;
+export function PuzzleEditor({ onNavigate }: PuzzleEditorProps) {
+  const [currentStep, setCurrentStep] = useState<'config' | 'image' | 'preview'>('config');
+  const [levelConfig, setLevelConfig] = useState({
+    name: '',
+    rows: 3,
+    cols: 3,
+    pieceShape: 'regular' as 'regular' | 'irregular'
   });
-  const [selectedPiece, setSelectedPiece] = useState<number | null>(null);
-  const [draggedPiece, setDraggedPiece] = useState<number | null>(null);
-  const [puzzleImage, setPuzzleImage] = useState<string>(initialImage || '');
-  const [editorMode, setEditorMode] = useState<'design' | 'test'>('design');
-  const [moveHistory, setMoveHistory] = useState<MoveHistory[]>([]);
+  const [imageUrl, setImageUrl] = useState('');
+  const [previewImage, setPreviewImage] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Calculate dynamic sizing
-  const basePieceSize = 120;
-  const scaleFactor = Math.max(0.6, 1 - (gridSize - 3) * 0.15);
-  const pieceSize = Math.floor(basePieceSize * scaleFactor);
-  const gridCellSize = pieceSize;
-  const puzzleAreaSize = gridSize * gridCellSize;
-
-  // Handle piece click (selection)
-  const handlePieceClick = useCallback((pieceId: number) => {
-    setSelectedPiece(selectedPiece === pieceId ? null : pieceId);
-  }, [selectedPiece]);
-
-  // Handle dedicated rotation button - INSTANT rotation
-  const handleRotateSelected = useCallback(() => {
-    if (selectedPiece === null) return;
-    
-    const piece = pieces.find(p => p.id === selectedPiece);
-    if (!piece) return;
-
-    const oldRotation = piece.rotation;
-    const newRotation = (piece.rotation - 90 + 360) % 360; // Counter-clockwise
-
-    // INSTANT rotation - no state delays
-    setPieces(prevPieces => 
-      prevPieces.map(piece => 
-        piece.id === selectedPiece 
-          ? { ...piece, rotation: newRotation }
-          : piece
-      )
-    );
-
-    // Add to history in test mode
-    if (editorMode === 'test') {
-      setMoveHistory(prev => [...prev, {
-        type: 'rotate',
-        pieceId: selectedPiece,
-        oldRotation,
-        newRotation
-      }]);
-    }
-  }, [selectedPiece, pieces, editorMode]);
-
-  // Handle piece rotation (from piece component) - INSTANT rotation
-  const handlePieceRotate = useCallback((pieceId: number) => {
-    const piece = pieces.find(p => p.id === pieceId);
-    if (!piece) return;
-
-    const oldRotation = piece.rotation;
-    const newRotation = (piece.rotation - 90 + 360) % 360; // Counter-clockwise
-
-    // INSTANT rotation - no state delays
-    setPieces(prevPieces => 
-      prevPieces.map(piece => 
-        piece.id === pieceId 
-          ? { ...piece, rotation: newRotation }
-          : piece
-      )
-    );
-
-    // Add to history in test mode
-    if (editorMode === 'test') {
-      setMoveHistory(prev => [...prev, {
-        type: 'rotate',
-        pieceId,
-        oldRotation,
-        newRotation
-      }]);
-    }
-  }, [pieces, editorMode]);
-
-  // Handle removing selected piece
-  const handleRemoveSelected = useCallback(() => {
-    if (selectedPiece === null) return;
-    
-    const piece = pieces.find(p => p.id === selectedPiece);
-    if (!piece || !piece.currentGridPosition) return;
-
-    const gridPos = piece.currentGridPosition;
-    
-    // Remove piece from grid
-    const newGrid = puzzleGrid.map(row => [...row]);
-    newGrid[gridPos.row][gridPos.col] = null;
-    
-    const newPieces = pieces.map(p => 
-      p.id === selectedPiece 
-        ? { ...p, currentGridPosition: undefined }
-        : p
-    );
-    
-    setPuzzleGrid(newGrid);
-    setPieces(newPieces);
-
-    // Add to history in test mode
-    if (editorMode === 'test') {
-      setMoveHistory(prev => [...prev, {
-        type: 'remove',
-        pieceId: selectedPiece,
-        from: gridPos
-      }]);
-    }
-
-    setSelectedPiece(null);
-  }, [selectedPiece, pieces, puzzleGrid, editorMode]);
-
-  // Handle drag start
-  const handlePieceDragStart = useCallback((pieceId: number) => {
-    setDraggedPiece(pieceId);
-    setSelectedPiece(pieceId);
-  }, []);
-
-  // Handle drag end
-  const handlePieceDragEnd = useCallback(() => {
-    setDraggedPiece(null);
-  }, []);
-
-  // Handle drop on grid cell
-  const handleGridCellDrop = useCallback((e: React.DragEvent, gridRow: number, gridCol: number) => {
-    e.preventDefault();
-    
-    const pieceId = parseInt(e.dataTransfer.getData('text/plain'));
-    const piece = pieces.find(p => p.id === pieceId);
-    
-    if (!piece) return;
-
-    // Check if cell is occupied
-    if (puzzleGrid[gridRow][gridCol]) return;
-
-    // Remove piece from its current position if it was placed
-    const newGrid = puzzleGrid.map(row => [...row]);
-    if (piece.currentGridPosition) {
-      newGrid[piece.currentGridPosition.row][piece.currentGridPosition.col] = null;
-    }
-
-    // Place piece in new position
-    newGrid[gridRow][gridCol] = piece;
-    
-    const oldPosition = piece.currentGridPosition;
-    const newPieces = pieces.map(p => 
-      p.id === pieceId 
-        ? { ...p, currentGridPosition: { row: gridRow, col: gridCol } }
-        : p
-    );
-    
-    setPuzzleGrid(newGrid);
-    setPieces(newPieces);
-    setSelectedPiece(pieceId);
-
-    // Add to history in test mode
-    if (editorMode === 'test') {
-      setMoveHistory(prev => [...prev, {
-        type: 'place',
-        pieceId,
-        from: oldPosition ? { row: oldPosition.row, col: oldPosition.col } : undefined,
-        to: { row: gridRow, col: gridCol }
-      }]);
-    }
-  }, [pieces, puzzleGrid, editorMode]);
-
-  // Handle drag over grid cell
-  const handleGridCellDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  }, []);
-
-  // Handle grid cell click (select piece)
-  const handleGridCellClick = useCallback((gridRow: number, gridCol: number) => {
-    const piece = puzzleGrid[gridRow][gridCol];
-    if (piece) {
-      // Select the piece
-      setSelectedPiece(piece.id);
-    }
-  }, [puzzleGrid]);
-
-  // Handle undo (test mode only)
-  const handleUndo = useCallback(() => {
-    if (editorMode !== 'test' || moveHistory.length === 0) return;
-
-    const lastMove = moveHistory[moveHistory.length - 1];
-    
-    if (lastMove.type === 'place') {
-      // Undo placement
-      const newGrid = puzzleGrid.map(row => [...row]);
-      const newPieces = [...pieces];
-      
-      if (lastMove.to) {
-        newGrid[lastMove.to.row][lastMove.to.col] = null;
-      }
-      
-      const pieceIndex = newPieces.findIndex(p => p.id === lastMove.pieceId);
-      if (pieceIndex !== -1) {
-        newPieces[pieceIndex] = {
-          ...newPieces[pieceIndex],
-          currentGridPosition: lastMove.from
+  // 处理图片上传
+  const handleImageUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setPreviewImage(e.target?.result as string);
+          setImageUrl(e.target?.result as string);
         };
-        
-        if (lastMove.from) {
-          newGrid[lastMove.from.row][lastMove.from.col] = newPieces[pieceIndex];
-        }
+        reader.readAsDataURL(file);
+      } else {
+        alert('请选择有效的图片文件');
       }
-      
-      setPuzzleGrid(newGrid);
-      setPieces(newPieces);
-    } else if (lastMove.type === 'remove') {
-      // Undo removal
-      const newGrid = puzzleGrid.map(row => [...row]);
-      const newPieces = [...pieces];
-      
-      const pieceIndex = newPieces.findIndex(p => p.id === lastMove.pieceId);
-      if (pieceIndex !== -1 && lastMove.from) {
-        newPieces[pieceIndex] = {
-          ...newPieces[pieceIndex],
-          currentGridPosition: lastMove.from
-        };
-        newGrid[lastMove.from.row][lastMove.from.col] = newPieces[pieceIndex];
-      }
-      
-      setPuzzleGrid(newGrid);
-      setPieces(newPieces);
-    } else if (lastMove.type === 'rotate') {
-      // Undo rotation - INSTANT
-      const newPieces = pieces.map(piece => 
-        piece.id === lastMove.pieceId && lastMove.oldRotation !== undefined
-          ? { ...piece, rotation: lastMove.oldRotation }
-          : piece
-      );
-      setPieces(newPieces);
     }
+  }, []);
 
-    setMoveHistory(prev => prev.slice(0, -1));
-  }, [editorMode, moveHistory, puzzleGrid, pieces]);
-
-  // Shuffle pieces for testing
-  const handleShufflePieces = useCallback(() => {
-    const shuffledPieces = pieces.map(piece => ({
-      ...piece,
-      rotation: Math.floor(Math.random() * 4) * 90,
-      currentGridPosition: undefined
-    }));
-    
-    const newGrid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
-    
-    setPieces(shuffledPieces.sort(() => Math.random() - 0.5));
-    setPuzzleGrid(newGrid);
-    setSelectedPiece(null);
-    setMoveHistory([]);
-    setEditorMode('test');
-  }, [pieces, gridSize]);
-
-  // Reset to design mode
-  const handleResetToDesign = useCallback(() => {
-    const resetPieces = pieces.map(piece => ({
-      ...piece,
-      rotation: 0,
-      currentGridPosition: { row: piece.position.row, col: piece.position.col }
-    }));
-    
-    const newGrid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
-    resetPieces.forEach(piece => {
-      if (piece.currentGridPosition) {
-        newGrid[piece.currentGridPosition.row][piece.currentGridPosition.col] = piece;
-      }
-    });
-    
-    setPieces(resetPieces);
-    setPuzzleGrid(newGrid);
-    setSelectedPiece(null);
-    setMoveHistory([]);
-    setEditorMode('design');
-  }, [pieces, gridSize]);
-
-  // Handle image upload
-  const handleImageUpload = () => {
-    const imageUrl = prompt('请输入图片URL (或在实际应用中选择文件):');
-    if (imageUrl) {
-      setPuzzleImage(imageUrl);
+  // 处理URL输入
+  const handleUrlChange = (url: string) => {
+    setImageUrl(url);
+    if (url) {
+      setPreviewImage(url);
     }
   };
 
-  // Handle save
-  const handleSave = () => {
-    const puzzleData = {
-      pieces,
-      gridSize,
-      image: puzzleImage,
-      timestamp: Date.now()
+  // 保存自定义关卡
+  const handleSaveLevel = () => {
+    if (!levelConfig.name.trim()) {
+      alert('请输入关卡名称');
+      return;
+    }
+    
+    if (!imageUrl) {
+      alert('请上传或输入图片');
+      return;
+    }
+
+    const newLevel: CustomLevel = {
+      id: `custom_${Date.now()}`,
+      name: levelConfig.name,
+      imageUrl: imageUrl,
+      rows: levelConfig.rows,
+      cols: levelConfig.cols,
+      pieceShape: levelConfig.pieceShape,
+      createdAt: new Date()
     };
-    onSave?.(puzzleData);
+
+    // 保存到localStorage
+    const existingLevels = JSON.parse(localStorage.getItem('customLevels') || '[]');
+    existingLevels.push(newLevel);
+    localStorage.setItem('customLevels', JSON.stringify(existingLevels));
+
+    alert('自定义关卡创建成功！');
+    onNavigate('home');
   };
 
-  // Handle test
-  const handleTest = () => {
-    const puzzleData = {
-      pieces,
-      gridSize,
-      image: puzzleImage
-    };
-    onTest?.(puzzleData);
+  // 预览关卡
+  const handlePreviewLevel = () => {
+    if (!levelConfig.name.trim() || !imageUrl) {
+      alert('请完成关卡配置和图片设置');
+      return;
+    }
+    
+    // 这里可以跳转到预览页面或游戏页面
+    alert('预览功能开发中...');
   };
 
-  const unplacedPieces = pieces.filter(piece => !piece.currentGridPosition);
-  const selectedPieceData = selectedPiece !== null ? pieces.find(p => p.id === selectedPiece) : null;
+  const renderConfigStep = () => (
+    <div className="space-y-6">
+      <div>
+        <Label htmlFor="levelName">关卡名称</Label>
+        <Input
+          id="levelName"
+          value={levelConfig.name}
+          onChange={(e) => setLevelConfig(prev => ({ ...prev, name: e.target.value }))}
+          placeholder="输入关卡名称"
+          className="mt-2"
+        />
+      </div>
 
-  return (
-    <div className="flex flex-1 min-h-0">
-      {/* Central Puzzle Area - Enlarged */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6">
-        {/* Mode Indicator */}
-        <div className="mb-4">
-          <Badge variant={editorMode === 'design' ? 'default' : 'secondary'}>
-            {editorMode === 'design' ? '设计模式' : '测试模式'}
-          </Badge>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="rows">行数</Label>
+          <Select
+            value={levelConfig.rows.toString()}
+            onValueChange={(value: string) => setLevelConfig(prev => ({ ...prev, rows: parseInt(value) }))}
+          >
+            <SelectTrigger className="mt-2">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {[2, 3, 4, 5, 6, 7, 8].map(num => (
+                <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        <div className="relative">
-          {/* Puzzle Grid */}
-          <Card className="bg-card/95 backdrop-blur-sm shadow-xl">
-            <CardContent className="p-6">
-              <div 
-                className={`grid gap-0 ${
-                  gridSize === 3 ? 'grid-cols-3' :
-                  gridSize === 4 ? 'grid-cols-4' : 'grid-cols-5'
-                }`}
-                style={{ 
-                  width: `${puzzleAreaSize}px`,
-                  height: `${puzzleAreaSize}px`
-                }}
-              >
-                {Array.from({ length: gridSize * gridSize }).map((_, index) => {
-                  const row = Math.floor(index / gridSize);
-                  const col = index % gridSize;
-                  const piece = puzzleGrid[row][col];
-                  const isSelected = piece && selectedPiece === piece.id;
-                  
-                  return (
-                    <div
-                      key={index}
-                      className={`
-                        relative border-2 transition-all duration-150 
-                        flex items-center justify-center  // 添加这行
-                        ${piece ? 'border-primary bg-background' 
-                                : 'border-dashed border-muted-foreground/30 hover:border-muted-foreground/60'}
-                      }`}
-                      style={{
-                        width: `${gridCellSize}px`,
-                        height: `${gridCellSize}px`,
-                        overflow: 'visible'
-                      }}
-                      onClick={() => handleGridCellClick(row, col)}
-                      onDrop={(e) => handleGridCellDrop(e, row, col)}
-                      onDragOver={handleGridCellDragOver}
-                    >
-                      {piece && (
-                        <PuzzlePiece
-                          id={piece.id}
-                          position={piece.position}
-                          gridSize={gridSize}
-                          rotation={piece.rotation}
-                          imageUrl={puzzleImage}
-                          isPlaced={true}
-                          onPieceClick={handlePieceClick}
-                          onPieceRotate={handlePieceRotate}
-                          onPieceDragStart={handlePieceDragStart}
-                          onPieceDragEnd={handlePieceDragEnd}
-                          edges={piece.originalEdges}
-                          isSelected={selectedPiece === piece.id}
-                          className="absolute"
-                        />
-                      )}
-                      
-                      {/* Drop zone indicator */}
-                      {!piece && (
-                        <div className="w-full h-full rounded-lg bg-muted/30 opacity-0 transition-opacity duration-200 hover:opacity-100" />
-                      )}
+        <div>
+          <Label htmlFor="cols">列数</Label>
+          <Select
+            value={levelConfig.cols.toString()}
+            onValueChange={(value: string) => setLevelConfig(prev => ({ ...prev, cols: parseInt(value) }))}
+          >
+            <SelectTrigger className="mt-2">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {[2, 3, 4, 5, 6, 7, 8].map(num => (
+                <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
                     </div>
-                  );
-                })}
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Control Buttons */}
-          <div className="absolute -bottom-4 -right-4 flex gap-2">
-            {editorMode === 'design' ? (
-              <>
-                <Button
-                  onClick={handleShufflePieces}
-                  size="sm"
-                  variant="outline"
-                  className="bg-card/95 backdrop-blur-sm shadow-lg"
-                >
-                  <Play className="size-4 mr-2" />
-                  测试
-                </Button>
-                <Button
-                  onClick={handleSave}
-                  size="sm"
-                  className="bg-primary hover:bg-primary/90 shadow-lg"
-                >
-                  <Save className="size-4 mr-2" />
-                  保存
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  onClick={handleUndo}
-                  disabled={moveHistory.length === 0}
-                  size="sm"
-                  variant="outline"
-                  className="bg-card/95 backdrop-blur-sm shadow-lg"
-                >
-                  <Undo2 className="size-4 mr-2" />
-                  撤销
-                </Button>
-                <Button
-                  onClick={handleResetToDesign}
-                  size="sm"
-                  variant="outline"
-                  className="bg-card/95 backdrop-blur-sm shadow-lg"
-                >
-                  <RotateCcw className="size-4 mr-2" />
-                  返回设计
-                </Button>
-              </>
-            )}
+      <div>
+        <Label>拼图块形状</Label>
+        <div className="flex items-center space-x-6 mt-2">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="regular"
+              checked={levelConfig.pieceShape === 'regular'}
+              onCheckedChange={(checked: boolean) => 
+                setLevelConfig(prev => ({ ...prev, pieceShape: checked ? 'regular' : 'irregular' }))
+              }
+            />
+            <Label htmlFor="regular">规则形状</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="irregular"
+              checked={levelConfig.pieceShape === 'irregular'}
+              onCheckedChange={(checked: boolean) => 
+                setLevelConfig(prev => ({ ...prev, pieceShape: checked ? 'irregular' : 'regular' }))
+              }
+            />
+            <Label htmlFor="irregular">不规则形状</Label>
           </div>
         </div>
       </div>
 
-      {/* Right Side Panel - Enlarged */}
-      <div className="w-[480px] p-4 bg-card/95 backdrop-blur-sm border-l border-border space-y-4 min-h-0 flex flex-col">
-        {/* Selected Piece Controls */}
-        {selectedPieceData && (
-          <Card className="flex-shrink-0">
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-3">选中拼图块 #{selectedPieceData.id + 1}</h3>
-              <div className="flex flex-col gap-2">
-                <Button
-                  onClick={handleRotateSelected}
-                  variant="outline"
-                  className="w-full justify-start"
-                >
-                  <RotateCw className="size-4 mr-2" />
-                  逆时针旋转 90°
+      <div className="flex justify-end space-x-2">
+        <Button variant="outline" onClick={() => onNavigate('home')}>
+          <ArrowLeft className="size-4 mr-2" />
+          返回
                 </Button>
-                {selectedPieceData.currentGridPosition && editorMode === 'test' && (
-                  <Button
-                    onClick={handleRemoveSelected}
-                    variant="outline"
-                    className="w-full justify-start text-destructive hover:text-destructive"
-                  >
-                    <X className="size-4 mr-2" />
-                    移除拼图块
+        <Button onClick={() => setCurrentStep('image')}>
+          下一步
                   </Button>
-                )}
               </div>
-              <div className="mt-3 text-xs text-muted-foreground">
-                <p>状态: {selectedPieceData.currentGridPosition ? '已放置' : '未放置'}</p>
-                <p>旋转: {selectedPieceData.rotation}°</p>
-                {selectedPieceData.currentGridPosition && (
-                  <p>位置: ({selectedPieceData.currentGridPosition.row + 1}, {selectedPieceData.currentGridPosition.col + 1})</p>
-                )}
               </div>
-            </CardContent>
-          </Card>
-        )}
+  );
 
-        {/* Image Settings */}
-        <Card className="flex-shrink-0">
-          <CardHeader>
-            <CardTitle className="text-lg">拼图图片</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden">
-              {puzzleImage ? (
-                <img 
-                  src={puzzleImage} 
-                  alt="Puzzle"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="text-center text-muted-foreground">
-                  <ImageIcon className="size-12 mx-auto mb-2" />
-                  <p className="text-sm">暂无图片</p>
-                </div>
-              )}
-            </div>
+  const renderImageStep = () => (
+    <div className="space-y-6">
+      <div>
+        <Label>上传图片</Label>
+        <div className="mt-2 space-y-4">
+          <div className="flex items-center space-x-2">
             <Button 
-              onClick={handleImageUpload}
               variant="outline"
-              className="w-full"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center"
             >
               <Upload className="size-4 mr-2" />
-              上传图片
+              选择文件
             </Button>
-          </CardContent>
-        </Card>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <span className="text-sm text-muted-foreground">
+              支持 JPG, PNG, GIF 格式
+            </span>
+          </div>
 
-        {/* Piece Storage (Test Mode) */}
-        {editorMode === 'test' && unplacedPieces.length > 0 && (
-          <Card className="flex-1 min-h-0">
-            <CardHeader>
-              <CardTitle className="text-lg">拼图块存储 (剩余 {unplacedPieces.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="h-full flex flex-col">
-              <div 
-                className="grid gap-0 overflow-y-auto flex-1"
-                style={{ 
-                  gridTemplateColumns: `repeat(${Math.min(5, Math.ceil(Math.sqrt(unplacedPieces.length)))}, 1fr)`,
-                  gridAutoRows: 'min-content'
-                }}
-              >
-                {unplacedPieces.map((piece) => (
-                  <div
-                    key={piece.id}
-                    className="relative flex items-center justify-center"
-                    style={{ 
-                      aspectRatio: '1',
-                      minHeight: `${Math.max(60, pieceSize * 0.8)}px`
-                    }}
-                  >
-                    <PuzzlePiece
-                      id={piece.id}
-                      position={piece.position}
-                      gridSize={gridSize}
-                      rotation={piece.rotation}
-                      imageUrl={puzzleImage}
-                      isPlaced={false}
-                      onPieceClick={handlePieceClick}
-                      onPieceRotate={handlePieceRotate}
-                      onPieceDragStart={handlePieceDragStart}
-                      onPieceDragEnd={handlePieceDragEnd}
-                      edges={piece.originalEdges}
-                      isSelected={selectedPiece === piece.id}
-                      isDragging={draggedPiece === piece.id}
+          <div className="text-center text-muted-foreground">或</div>
+
+          <div>
+            <Label htmlFor="imageUrl">输入图片URL</Label>
+            <Input
+              id="imageUrl"
+              value={imageUrl}
+              onChange={(e) => handleUrlChange(e.target.value)}
+              placeholder="https://example.com/image.jpg"
+              className="mt-2"
+            />
+          </div>
+        </div>
+      </div>
+
+      {previewImage && (
+        <div>
+          <Label>图片预览</Label>
+          <div className="mt-2 border rounded-lg p-4">
+            <img
+              src={previewImage}
+              alt="预览"
+              className="max-w-full max-h-64 mx-auto rounded"
+              onError={() => {
+                alert('图片加载失败，请检查URL是否正确');
+                setPreviewImage('');
+                setImageUrl('');
+              }}
                     />
                   </div>
-                ))}
               </div>
-            </CardContent>
-          </Card>
-        )}
+      )}
 
-        {/* Editor Tools */}
-        <Card className="flex-shrink-0">
+      <div className="flex justify-between">
+        <Button variant="outline" onClick={() => setCurrentStep('config')}>
+          上一步
+        </Button>
+        <Button 
+          onClick={() => setCurrentStep('preview')}
+          disabled={!imageUrl}
+        >
+          下一步
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderPreviewStep = () => (
+    <div className="space-y-6">
+      <div>
+        <Label>关卡预览</Label>
+        <Card className="mt-2">
           <CardHeader>
-            <CardTitle className="text-lg">编辑器工具</CardTitle>
+            <CardTitle className="text-lg">{levelConfig.name}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-sm space-y-2">
-              <div className="flex justify-between">
-                <span>网格大小:</span>
-                <span>{gridSize}x{gridSize}</span>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium">网格大小:</span>
+                <span className="ml-2">{levelConfig.rows} × {levelConfig.cols}</span>
               </div>
-              <div className="flex justify-between">
-                <span>拼图块数:</span>
-                <span>{gridSize * gridSize}</span>
+              <div>
+                <span className="font-medium">拼图块数:</span>
+                <span className="ml-2">{levelConfig.rows * levelConfig.cols}</span>
               </div>
-              <div className="flex justify-between">
-                <span>当前模式:</span>
-                <Badge variant={editorMode === 'design' ? 'default' : 'secondary'}>
-                  {editorMode === 'design' ? '设计' : '测试'}
-                </Badge>
+              <div>
+                <span className="font-medium">拼图块形状:</span>
+                <span className="ml-2">{levelConfig.pieceShape === 'regular' ? '规则' : '不规则'}</span>
+                </div>
+              <div>
+                <span className="font-medium">难度:</span>
+                <span className="ml-2">
+                  {levelConfig.rows * levelConfig.cols <= 9 ? '简单' : 
+                   levelConfig.rows * levelConfig.cols <= 16 ? '中等' : '困难'}
+                </span>
               </div>
             </div>
-            
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p>• 点击选择拼图块</p>
-              <p>• 拖拽移动拼图块位置</p>
-              <p>• 使用专用按钮瞬间旋转拼图块</p>
-              <p>• 设计模式: 编辑拼图布局</p>
-              <p>• 测试模式: 体验拼图游戏</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {previewImage && (
+        <div>
+          <Label>图片预览</Label>
+          <div className="mt-2 border rounded-lg p-4">
+            <img
+              src={previewImage}
+              alt="预览"
+              className="max-w-full max-h-64 mx-auto rounded"
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-between">
+        <Button variant="outline" onClick={() => setCurrentStep('image')}>
+          上一步
+        </Button>
+        <div className="space-x-2">
+          <Button variant="outline" onClick={handlePreviewLevel}>
+            <Play className="size-4 mr-2" />
+            预览
+          </Button>
+          <Button onClick={handleSaveLevel}>
+            <Save className="size-4 mr-2" />
+            保存关卡
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen p-8">
+      <div className="max-w-2xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
+          <Button
+            variant="outline"
+            onClick={() => onNavigate('home')}
+            className="bg-card/80 backdrop-blur-sm"
+          >
+            <ArrowLeft className="size-4 mr-2" />
+            返回首页
+          </Button>
+          <h1 className="text-4xl text-primary-foreground flex items-center">
+            <Settings className="size-8 mr-3" />
+            拼图编辑器
+          </h1>
+          <div></div>
             </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Grid3X3 className="size-5 mr-2" />
+              步骤 {currentStep === 'config' ? '1' : currentStep === 'image' ? '2' : '3'}: {
+                currentStep === 'config' ? '配置关卡' : 
+                currentStep === 'image' ? '设置图片' : '预览保存'
+              }
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {currentStep === 'config' && renderConfigStep()}
+            {currentStep === 'image' && renderImageStep()}
+            {currentStep === 'preview' && renderPreviewStep()}
           </CardContent>
         </Card>
       </div>

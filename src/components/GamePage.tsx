@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
@@ -12,21 +12,23 @@ import { useSettings } from '../context/SettingsContext';
 
 interface GamePageProps {
     onNavigate: (page: Page) => void;
-    difficulty: 'easy' | 'medium' | 'hard';
-    level: number;
+    difficulty: 'easy' | 'medium' | 'hard' | 'custom';
+    level: number | string;
     onNextLevel: () => void;
 }
 
 const difficultySettings = {
     easy: { timeLimit: null, pointMultiplier: 1, gridSize: 3 },
     medium: { timeLimit: 300, pointMultiplier: 1.5, gridSize: 4 },
-    hard: { timeLimit: 180, pointMultiplier: 2, gridSize: 5 }
+    hard: { timeLimit: 180, pointMultiplier: 2, gridSize: 5 },
+    custom: { timeLimit: null, pointMultiplier: 1.5, gridSize: 4 }
 };
 
 const difficultyConfig = {
     easy: { color: 'bg-green-500', name: '简单 (3x3)' },
     medium: { color: 'bg-yellow-500', name: '中等 (4x4)' },
-    hard: { color: 'bg-red-500', name: '困难 (5x5)' }
+    hard: { color: 'bg-red-500', name: '困难 (5x5)' },
+    custom: { color: 'bg-purple-500', name: '自定义' }
 };
 
 // 保存游戏进度的接口
@@ -38,7 +40,7 @@ interface GameSaveData {
     startTime: number;
     moveHistory: any[];
     difficulty: string;
-    level: number;
+    level: number | string;
     timestamp: number;
 }
 
@@ -66,7 +68,7 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
     const { isMusicOn, playBackgroundMusic, stopBackgroundMusic } = useSettings();
 
     // Check if there's a next level available
-    const hasNextLevel = level < levels[difficulty].length;
+    const hasNextLevel = difficulty === 'custom' ? false : typeof level === 'number' && level < levels[difficulty as 'easy' | 'medium' | 'hard'].length;
 
     // 检查用户登录状态
     useEffect(() => {
@@ -102,13 +104,24 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
     useEffect(() => {
         const loadPuzzleImage = () => {
             try {
-                // Get the selected level from levels data
-                const levelData = levels[difficulty].find(l => l.id === level);
-                if (levelData && levelData.imageUrl) {
-                    setPuzzleImageUrl(levelData.imageUrl);
+                if (difficulty === 'custom') {
+                    // For custom difficulty, get the level data from localStorage
+                    const customLevels = JSON.parse(localStorage.getItem('customLevels') || '[]');
+                    const customLevel = customLevels.find((l: any) => l.id === level);
+                    if (customLevel && customLevel.imageUrl) {
+                        setPuzzleImageUrl(customLevel.imageUrl);
+                    } else {
+                        setPuzzleImageUrl('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=800&fit=crop&crop=center');
+                    }
                 } else {
-                    // Fallback to first level if not found
-                    setPuzzleImageUrl(levels[difficulty][0].imageUrl);
+                    // Get the selected level from levels data
+                    const levelData = levels[difficulty].find((l: any) => l.id === level);
+                    if (levelData && levelData.imageUrl) {
+                        setPuzzleImageUrl(levelData.imageUrl);
+                    } else {
+                        // Fallback to first level if not found
+                        setPuzzleImageUrl(levels[difficulty][0].imageUrl);
+                    }
                 }
             } catch (error) {
                 console.error('Failed to load puzzle image:', error);
@@ -227,7 +240,7 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
         // 使用当前用户信息自动提交分数
         if (currentUser) {
             const level = Math.max(1, Math.floor(score / 5000));
-            submitScore(currentUser.username, score, difficulty, level);
+            submitScore(currentUser.username, score, difficulty as 'easy' | 'medium' | 'hard', level);
             setShowCompletionDialog(true);
         }
     };
@@ -332,7 +345,7 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
                 imageUrl={puzzleImageUrl}
                 onComplete={handleGameComplete}
                 onNavigate={handleNavigate}
-                difficulty={difficulty}
+                difficulty={difficulty as 'easy' | 'medium' | 'hard'}
                 level={level}
                 hasSavedGame={hasSavedGame}
                 onSaveGame={saveGameProgress}
@@ -440,7 +453,7 @@ export function GamePage({ onNavigate, difficulty, level, onNextLevel }: GamePag
                                     variant="outline"
                                     size="lg"
                                 >
-                                    下一关 (第 {level + 1} 关)
+                                    下一关 (第 {typeof level === 'number' ? level + 1 : level} 关)
                                 </Button>
                             )}
                             <div className="flex gap-2 w-full">

@@ -133,7 +133,7 @@ export function Homepage({ onNavigate }: HomepageProps) {
                             <Button
                                 variant="outline"
                                 className="w-full"
-                                onClick={() => checkLoginAndNavigate('editorDifficulty')}
+                                onClick={() => checkLoginAndNavigate('puzzleEditor')}
                             >
                                 打开编辑器
                             </Button>

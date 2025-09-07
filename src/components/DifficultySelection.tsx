@@ -1,13 +1,13 @@
 import React from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { ArrowLeft, Zap, Target, Flame, Star, Clock, Brain } from 'lucide-react';
+import { ArrowLeft, Zap, Target, Flame, Star, Clock, Brain, Settings } from 'lucide-react';
 import { Page } from '../App';
 
 interface DifficultySelectionProps {
   onNavigate: (page: Page) => void;
-  onSelectDifficulty: (difficulty: 'easy' | 'medium' | 'hard') => void;
-  selectedDifficulty: 'easy' | 'medium' | 'hard';
+  onSelectDifficulty: (difficulty: 'easy' | 'medium' | 'hard' | 'custom') => void;
+  selectedDifficulty: 'easy' | 'medium' | 'hard' | 'custom';
 }
 
 const difficulties = [
@@ -46,13 +46,74 @@ const difficulties = [
     timeLimit: '每个拼图3分钟',
     pointMultiplier: '2倍',
     gridSize: '5x5块'
+  },
+  {
+    id: 'custom' as const,
+    title: '自定义关卡',
+    subtitle: '您创建的关卡',
+    description: '游玩您使用关卡编辑器创建的自定义拼图关卡。',
+    icon: Settings,
+    color: 'bg-purple-500',
+    features: ['自定义网格大小', '自定义拼图块形状', '个人图片', '独特体验'],
+    timeLimit: '无限制',
+    pointMultiplier: '1.5倍',
+    gridSize: '自定义'
   }
 ];
 
 export function DifficultySelection({ onNavigate, onSelectDifficulty, selectedDifficulty }: DifficultySelectionProps) {
   const handleSelectLevel = () => {
-    onSelectDifficulty(selectedDifficulty);
-    onNavigate('levelSelection');
+    if (selectedDifficulty === 'custom') {
+      // 检查是否有自定义关卡
+      const customLevels = localStorage.getItem('customLevels');
+      console.log('检查自定义关卡:', customLevels); // 调试信息
+      
+      if (!customLevels) {
+        alert('您还没有创建任何自定义关卡，请先使用关卡编辑器创建关卡！');
+        onNavigate('puzzleEditor');
+        return;
+      }
+      
+      try {
+        const parsedLevels = JSON.parse(customLevels);
+        console.log('解析后的关卡数据:', parsedLevels); // 调试信息
+        
+        if (!Array.isArray(parsedLevels) || parsedLevels.length === 0) {
+          alert('您还没有创建任何自定义关卡，请先使用关卡编辑器创建关卡！');
+          onNavigate('puzzleEditor');
+          return;
+        }
+        
+        // 额外检查：确保关卡数据有效
+        const validLevels = parsedLevels.filter(level => 
+          level && 
+          level.id && 
+          level.name && 
+          level.rows && 
+          level.cols
+        );
+        
+        if (validLevels.length === 0) {
+          alert('自定义关卡数据无效，请重新创建关卡！');
+          onNavigate('puzzleEditor');
+          return;
+        }
+        
+        console.log('有效关卡数量:', validLevels.length);
+        
+      } catch (error) {
+        console.error('解析自定义关卡数据失败:', error);
+        alert('自定义关卡数据格式错误，请重新创建关卡！');
+        onNavigate('puzzleEditor');
+        return;
+      }
+      
+      onSelectDifficulty(selectedDifficulty);
+      onNavigate('levelSelection');
+    } else {
+      onSelectDifficulty(selectedDifficulty);
+      onNavigate('levelSelection');
+    }
   };
 
   return (
@@ -76,7 +137,7 @@ export function DifficultySelection({ onNavigate, onSelectDifficulty, selectedDi
         </div>
 
         {/* Difficulty Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-8 mb-8">
           {difficulties.map((difficulty) => {
             const IconComponent = difficulty.icon;
             const isSelected = selectedDifficulty === difficulty.id;
@@ -160,7 +221,7 @@ export function DifficultySelection({ onNavigate, onSelectDifficulty, selectedDi
             onClick={handleSelectLevel}
             className="bg-primary hover:bg-primary/90 text-lg px-8 py-3"
           >
-            选择关卡 ({difficulties.find(d => d.id === selectedDifficulty)?.title})
+            {selectedDifficulty === 'custom' ? '进入编辑器' : `选择关卡 (${difficulties.find(d => d.id === selectedDifficulty)?.title})`}
           </Button>
           <Button 
             variant="outline"

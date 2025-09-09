@@ -1,16 +1,129 @@
 
   <!DOCTYPE html>
-  <html lang="en">
+  <html lang="zh-CN">
     <head>
       <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Desktop Game Application</title>
-      <script type="module" crossorigin src="/assets/index-D98b4NDF.js"></script>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+      <meta name="description" content="一个支持移动端的拼图游戏，包含自定义关卡功能" />
+      <meta name="keywords" content="拼图游戏,拼图,puzzle,游戏,移动端" />
+      <meta name="author" content="Puzzle Game Team" />
+      
+      <!-- PWA 支持 -->
+      <link rel="manifest" href="/manifest.json" />
+      <meta name="theme-color" content="#3b82f6" />
+      <meta name="apple-mobile-web-app-capable" content="yes" />
+      <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+      <meta name="apple-mobile-web-app-title" content="拼图游戏" />
+      <link rel="apple-touch-icon" href="/icon-192.png" />
+      
+      <!-- 移动端优化 -->
+      <meta name="format-detection" content="telephone=no" />
+      <meta name="msapplication-tap-highlight" content="no" />
+      
+      <!-- 预加载关键资源 -->
+      <link rel="preconnect" href="https://images.unsplash.com" />
+      <link rel="dns-prefetch" href="https://images.unsplash.com" />
+      
+      <title>拼图游戏 - Puzzle Game</title>
+      
+      <style>
+        /* 加载动画 */
+        #loading {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: #ffffff;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          z-index: 9999;
+          transition: opacity 0.3s ease-out;
+        }
+        
+        .spinner {
+          width: 40px;
+          height: 40px;
+          border: 4px solid #f3f3f3;
+          border-top: 4px solid #3b82f6;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+          margin-top: 16px;
+          color: #666;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        /* 防止页面闪烁 */
+        body {
+          margin: 0;
+          padding: 0;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+          body {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+          }
+        }
+      </style>
+      <script type="module" crossorigin src="/assets/index-g3wd0bHe.js"></script>
+      <link rel="modulepreload" crossorigin href="/assets/vendor-DJcYfsJ3.js">
+      <link rel="modulepreload" crossorigin href="/assets/motion-BrnN12OS.js">
+      <link rel="modulepreload" crossorigin href="/assets/icons-DQ8F-6Cc.js">
       <link rel="stylesheet" crossorigin href="/assets/index-BS0FaTZH.css">
     </head>
 
     <body>
-      <div id="root"></div>
+      <div id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">加载中...</div>
+      </div>
+      <div id="root"></div>
+      <script>
+        // 隐藏加载动画
+        window.addEventListener('load', function() {
+          const loading = document.getElementById('loading');
+          if (loading) {
+            loading.style.opacity = '0';
+            setTimeout(() => {
+              loading.style.display = 'none';
+            }, 300);
+          }
+        });
+        
+        // 移动端触摸优化
+        if ('ontouchstart' in window) {
+          document.body.classList.add('touch-device');
+        }
+        
+        // 防止双击缩放
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+          const now = (new Date()).getTime();
+          if (now - lastTouchEnd <= 300) {
+            event.preventDefault();
+          }
+          lastTouchEnd = now;
+        }, false);
+      </script>
     </body>
   </html>
   

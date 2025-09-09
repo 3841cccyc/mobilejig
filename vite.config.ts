@@ -52,9 +52,32 @@
     build: {
       target: 'esnext',
       outDir: 'build',
+      sourcemap: false,
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: true,
+          drop_debugger: true,
+        },
+      },
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom'],
+            motion: ['motion/react'],
+            icons: ['lucide-react'],
+          },
+        },
+      },
+      chunkSizeWarningLimit: 1000,
     },
     server: {
       port: 3000,
       open: true,
+      host: true, // 允许外部访问
+    },
+    preview: {
+      port: 4173,
+      host: true,
     },
   });

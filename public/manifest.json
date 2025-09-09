@@ -1,0 +1,27 @@
+{
+  "name": "拼图游戏 Puzzle Game",
+  "short_name": "拼图游戏",
+  "description": "一个支持移动端的拼图游戏，包含自定义关卡功能",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "entertainment"],
+  "lang": "zh-CN",
+  "dir": "ltr"
+}
